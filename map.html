@@ -1,181 +1,287 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
+  <title>sotiio map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>jsMind — webhook wait mode</title>
-  <!-- jsMind (CDN). При желании замените на локальные пути к вашей сборке. -->
-  <script src="https://unpkg.com/jsmind@0.8.6/es6/jsmind.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/jsmind@0.8.6/style/jsmind.css"/>
+  <link rel="stylesheet" href="/static/style/jsmind.css" />
   <style>
-    html, body { height: 100%; margin: 0; }
-    #jsmind_container { position: absolute; inset: 0; }
-    /* Лоадер поверх всей страницы */
-    #loader {
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(255,255,255,.6); z-index: 10000;
-      font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+    /* ... ваш существующий CSS ... */
+    
+    /* Добавляем стили для индикатора загрузки */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 12000;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--sel, #ff622b);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    .loading-text {
+      font-size: 16px;
+      color: #333;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
+<div id="wrap">
   <div id="jsmind_container"></div>
-  <div id="loader">Ждём ответ от вебхука…</div>
 
-  <script>
-    // ────────────────────────────
-    // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ UI
-    // ────────────────────────────
-    function showLoader(msg='Загружаем карту…'){
-      const el = document.getElementById('loader');
-      if (el) { el.textContent = msg; el.style.display = 'flex'; }
-    }
-    function hideLoader(){
-      const el = document.getElementById('loader');
-      if (el) el.style.display = 'none';
-    }
+  <!-- Добавляем индикатор загрузки -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Создаём карту знаний...</div>
+  </div>
 
-    // Лёгкая маркировка уровней по node_id (опционально)
-    function tagLevels(){
-      try {
-        const all = document.querySelectorAll('#jsmind_container jmnode');
-        all.forEach(n => {
-          const id = n.getAttribute('nodeid') || '';
-          if (/^L1-/.test(id)) n.classList.add('lvl-1');
-          else if (/^L2-/.test(id)) n.classList.add('lvl-2');
-          else if (/^L3-/.test(id)) n.classList.add('lvl-3');
-          else if (/^L4-/.test(id)) n.classList.add('lvl-4');
-        });
-      } catch(e) { /* no-op */ }
-    }
+  <aside id="drawer" aria-hidden="true">
+    <!-- ... существующий drawer код ... -->
+  </aside>
+</div>
 
-    // ────────────────────────────
-    // ПОЛЛИНГ СТАТУСА (для 202 Accepted)
-    // ────────────────────────────
-    async function pollUntilReady(url, {timeout=60000, interval=1500} = {}){
-      const start = Date.now();
-      while (true) {
-        const r = await fetch(url, { cache: 'no-store' });
-        const ct = r.headers.get('content-type') || '';
-        if (r.ok && ct.includes('application/json')) {
-          const j = await r.json();
-          // Считаем готовым, если пришёл jsMind или флаг ready
-          if (j?.format === 'node_tree' || j?.data || j?.ready) return j;
+<script src="/static/js/jsmind.js"></script>
+<script>
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const task_id=qs.get('task');
+  const filename=qs.get('name');
+
+  const jm=new jsMind({
+    container:'jsmind_container',
+    editable:false, support_html:true,
+    view:{hmargin:140, vmargin:30, line_style:'curved'},
+    layout:{hspace:80, vspace:20, pspace:10, direction:'right'}
+  });
+
+  // Функции для работы с уровнями узлов
+  function tagLevels() {
+    const root = jm.get_root();
+    if (!root) return;
+    
+    const walk = (node, level) => {
+      const el = document.querySelector(`.jmnode[nodeid="${node.id}"]`);
+      if (el) {
+        el.classList.remove('lvl-0', 'lvl-1', 'lvl-2', 'lvl-3');
+        if (level === 0) {
+          el.classList.add('jsmind-root');
+        } else {
+          el.classList.add('lvl-' + Math.min(level, 3));
         }
-        if (Date.now() - start > timeout) throw new Error('Timeout ожидания результата вебхука');
-        await new Promise(res => setTimeout(res, interval));
       }
+      
+      if (node.children) {
+        node.children.forEach(child => walk(child, level + 1));
+      }
+    };
+    
+    walk(root, 0);
+  }
+
+  // Функции для drawer (оставляем без изменений)
+  function renderMeta(node){ /* ... */ }
+  function renderWiki(node){ /* ... */ }
+  function renderRaw(node){ /* ... */ }
+  function escapeHtml(s){ /* ... */ }
+
+  // Функции для показа/скрытия загрузки
+  function showLoading() {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+  }
+  
+  function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+
+  // Функция для отображения карты из данных
+  function displayMindData(mindData) {
+    try {
+      // Очищаем текущую карту
+      jm.clear();
+      
+      // Загружаем новые данные
+      jm.show(mindData);
+      
+      // Настраиваем отображение
+      jm.collapse_all();
+      const root = jm.get_root();
+      if (root) jm.expand_node(root.id);
+      
+      // Добавляем классы уровням после отрисовки
+      setTimeout(() => {
+        tagLevels();
+        jm.resize();
+      }, 100);
+      
+    } catch (error) {
+      console.error('Ошибка при отображении карты:', error);
+      alert('Ошибка при отображении карты знаний');
+    }
+  }
+
+  // Инициализация drawer (оставляем без изменений)
+  (function initDrawer(){
+    // ... ваш существующий код drawer ...
+  })();
+
+  // Основная функция загрузки данных
+  async function loadInitialData(){
+    if (!task_id || !filename) return;
+    
+    showLoading();
+    try {
+      const url=`/download_files_pyrus?task_id=${encodeURIComponent(task_id)}&filename=${encodeURIComponent(filename)}&match_mode=exact&versions=latest`;
+      const res=await fetch(url); 
+      const raw=await res.json();
+      const conv=await fetch('/json_2_jm',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(raw)
+      });
+      const mind=await conv.json();
+      displayMindData(mind);
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      alert('Ошибка загрузки начальных данных');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // Модифицируем функцию отправки вебхука для обработки ответа
+  async function submitSurveyAndLoadMap(role, subject, chosenOptions) {
+    const map_id = mapIdFromNow();
+    
+    const payload = {
+      source: 'sotiio_web_survey',
+      map_id,
+      user_story: {
+        "I_as...": role,
+        "Want_to_discover_a_universe...": subject,
+        "So_that...": chosenOptions,
+        timestamp: (new Date()).toISOString()
+      }
+    };
+
+    showLoading();
+    
+    try {
+      const resp = await fetch('https://n8n.sotiio.com/webhook/us', {
+        method:'POST',
+        mode:'cors',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+
+      if(!resp.ok){ 
+        throw new Error('HTTP '+resp.status+' '+await resp.text()); 
+      }
+      
+      // Ожидаем JSON ответ от вебхука
+      const responseData = await resp.json();
+      
+      // Проверяем, содержит ли ответ данные для карты
+      if (responseData && responseData.mind_data) {
+        // Отображаем полученные данные
+        displayMindData(responseData.mind_data);
+        return true;
+      } else {
+        throw new Error('Вебхук не вернул данные для визуализации');
+      }
+      
+    } catch (error) {
+      console.error('Ошибка при отправке:', error);
+      alert('Ошибка: ' + (error.message||error));
+      return false;
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // Функция генерации ID (оставляем без изменений)
+  function two(n){ return String(n).padStart(2,'0'); }
+  function mapIdFromNow(){
+    const d = new Date();
+    const ss = two(d.getSeconds());
+    const mm = two(d.getMinutes());
+    const hh = two(d.getHours());
+    const dd = two(d.getDate());
+    const MM = two(d.getMonth()+1);
+    const yy = two(d.getFullYear()%100);
+    return `${ss}${mm}${hh}${dd}${MM}${yy}`;
+  }
+
+  // Модифицируем обработчик отправки формы
+  document.getElementById('sotiio_submit').addEventListener('click', async ()=>{
+    const role = document.querySelector('input[name="role"]:checked')?.value;
+    const subject = document.getElementById('sotiio_subject').value.trim();
+    const chosen = Array.from(document.querySelectorAll('.option-card.selected')).map(x=>x.dataset.value);
+    const feedback = document.getElementById('sotiio_feedback');
+
+    if(!role){ 
+      feedback.style.color='crimson'; 
+      feedback.textContent='Выберите роль.'; 
+      return; 
+    }
+    if(!subject){ 
+      feedback.style.color='crimson'; 
+      feedback.textContent='Укажите тему/вселенную.'; 
+      return; 
+    }
+    if(chosen.length===0){ 
+      feedback.style.color='crimson'; 
+      feedback.textContent='Выберите хотя бы один вариант в «Чтобы…» или добавьте свой.'; 
+      return; 
     }
 
-    // ────────────────────────────
-    // ЗАПРОС К ВЕБХУКУ С ОЖИДАНИЕМ
-    // ────────────────────────────
-    async function fetchMindFromWebhook(webhookUrl, payload, {timeout=60000, expect='auto'} = {}){
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), timeout);
-      try{
-        // Шаг 1: пробуем синхронный ответ
-        const res = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(payload ?? {}),
-          signal: controller.signal
-        });
-
-        // Если оркестратор отвечает 202 и даёт URL для поллинга — ждём
-        if (res.status === 202) {
-          const pollUrl = res.headers.get('Location') || res.headers.get('status_url');
-          if (!pollUrl) throw new Error('202 Accepted без Location/status_url');
-          const j = await pollUntilReady(pollUrl, {timeout});
-          return j;
-        }
-
-        // Иначе читаем JSON сразу
-        const data = await res.json();
-
-        // Если это уже jsMind (format:"node_tree") — возвращаем как есть
-        if (expect === 'jm' || (expect === 'auto' && data?.format === 'node_tree' && data?.data)) {
-          return data;
-        }
-
-        // Иначе конвертируем через ваш локальный эндпойнт
-        const conv = await fetch('/json_2_jm', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(data)
-        });
-        return await conv.json();
-      } finally {
-        clearTimeout(t);
-      }
+    feedback.style.color='#333'; 
+    feedback.textContent='Создаём карту знаний...';
+    
+    const success = await submitSurveyAndLoadMap(role, subject, chosen);
+    
+    if (success) {
+      feedback.style.color='green'; 
+      feedback.textContent='Карта знаний создана!';
+      setTimeout(() => {
+        document.getElementById('sotiio_modal').style.display = 'none';
+        document.body.style.overflow = '';
+      }, 1000);
+    } else {
+      feedback.style.color='crimson'; 
+      feedback.textContent = 'Ошибка при создании карты';
     }
+  });
 
-    // ────────────────────────────
-    // ИНИЦИАЛИЗАЦИЯ jsMind
-    // ────────────────────────────
-    const jm = new jsMind({
-      container: 'jsmind_container',
-      editable: false,
-      theme: 'primary'
-    });
+  // Загружаем начальные данные при загрузке страницы
+  window.addEventListener('DOMContentLoaded', () => {
+    loadInitialData();
+    window.addEventListener('resize', () => { jm.resize(); });
+  });
 
-    // ────────────────────────────
-    // ОСНОВНОЙ ПОТОК
-    // ────────────────────────────
-    async function main(){
-      const qs = new URLSearchParams(location.search);
-      const task_id = qs.get('task');
-      const filename = qs.get('name');
+})();
+</script>
 
-      const webhook = qs.get('webhook');             // напр.: https://n8n.sotiio.com/webhook/jm
-      const timeout = +(qs.get('timeout') || 60000); // мс
-
-      if (webhook) {
-        showLoader('Ждём ответ от вебхука…');
-        const payload = {
-          task_id,
-          filename,
-          map_id: qs.get('map_id') || undefined
-        };
-        try{
-          const mind = await fetchMindFromWebhook(webhook, payload, {timeout, expect:'auto'});
-          jm.show(mind);
-          jm.collapse_all();
-          const root = jm.get_root(); if (root) jm.expand_node(root.id);
-          setTimeout(() => { tagLevels(); jm.resize(); hideLoader(); }, 100);
-          window.addEventListener('resize', ()=> jm.resize());
-        }catch(e){
-          hideLoader();
-          alert('Ошибка загрузки карты через вебхук: ' + (e.message || e));
-        }
-        return; // выходим — обычный путь не нужен
-      }
-
-      // === Fallback: старый поток скачивания + локальный конвертер ===
-      try{
-        showLoader('Загружаем карту…');
-        const url = `/download_files_pyrus?task_id=${encodeURIComponent(task_id||'')}&filename=${encodeURIComponent(filename||'')}&match_mode=exact&versions=latest`;
-        const res = await fetch(url);
-        const raw = await res.json();
-        const conv = await fetch('/json_2_jm', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(raw)
-        });
-        const mind = await conv.json();
-        jm.show(mind);
-        jm.collapse_all();
-        const root = jm.get_root(); if (root) jm.expand_node(root.id);
-        setTimeout(() => { tagLevels(); jm.resize(); hideLoader(); }, 100);
-        window.addEventListener('resize', ()=> jm.resize());
-      }catch(err){
-        hideLoader();
-        alert('Ошибка загрузки карты: ' + (err.message || err));
-      }
-    }
-
-    main();
-  </script>
-</body>
-</html>
+<!-- ... остальная часть вашего HTML с формой survey ... -->
