@@ -114,118 +114,11 @@
     .wiki-item h3{margin:0 0 6px;font-size:15px;color:#222}
     .wiki-item div{font-size:14px;color:#333;line-height:1.4}
     .empty{color:#777;font-style:italic;padding:16px 0}
-
-    /* === Стили для формы опроса === */
-    #sotiio_modal, #sotiio_modal * { box-sizing: border-box; }
-    #sotiio_survey_btn{
-      position: fixed; right: 20px; bottom: 24px; z-index:11000;
-      background: var(--sel,#ff622b); color:#fff; border:none; padding:12px 16px;
-      border-radius:12px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.18);
-      font-weight:600; font-family:inherit;
-    }
-    #sotiio_modal{
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      z-index:11010; background: rgba(0,0,0,0.45); padding:16px; overflow-x:hidden;
-    }
-    #sotiio_modal .card{
-      width:min(820px,96vw); max-height:90vh; overflow:auto; background:#fff;
-      border-radius:12px; padding:18px 22px; box-shadow:0 12px 40px rgba(0,0,0,.22);
-      font-family:inherit; position:relative; overflow-x:hidden;
-    }
-    .close-btn{
-      position:absolute; top:10px; right:12px; font-size:24px; font-weight:800;
-      line-height:1; border:none; background:transparent; cursor:pointer; color:#444;
-    }
-    .close-btn:hover{ color:#000; transform:scale(1.06); }
-    .row{ margin:14px 0; }
-    .label{ font-weight:700; margin-bottom:8px; }
-    .roles{ display:flex; flex-direction:column; gap:8px; }
-    .roles label{ display:flex; align-items:center; gap:10px; font-size:15px; }
-    .narrow{ width:60%; min-width:300px; margin-inline:auto; }
-    .narrow-left{ width:60%; max-width:640px; margin-left:0; margin-right:auto; }
-    .text-input{
-      width:100%; padding:12px 14px; border-radius:10px; border:1px solid #ddd; font-size:15px;
-    }
-    .options-grid{ display:grid; grid-template-columns:repeat(2,minmax(240px,1fr)); gap:10px; }
-    .option-card{
-      border:1px solid #e6e6e6; padding:10px 12px; border-radius:10px;
-      cursor:pointer; user-select:none; background:#fff; font-size:14px;
-    }
-    .option-card.selected{ border-color:var(--sel,#ff622b); background:rgba(255,98,43,0.06); }
-    .add-own.narrow-left{ position:relative; }
-    .add-own .text-input{ padding-right:46px; }
-    .add-own .add-btn{
-      position:absolute; right:6px; top:50%; transform:translateY(-50%);
-      height:34px; min-width:34px; padding:0 10px;
-      background:#f7f7f7; border:1px solid #ddd; border-radius:8px; cursor:pointer;
-      display:flex; align-items:center; justify-content:center; font-size:16px;
-    }
-    .add-own .add-btn:hover{ background:#ececec; }
-    .chiplist{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-    .chip{ background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 10px; border-radius:16px; font-size:13px; }
-    .actions{ display:flex; justify-content:flex-end; align-items:center; margin-top:16px; gap:10px; }
-    .primary-btn{
-      background:var(--sel,#ff622b); color:#fff; border:none; padding:10px 16px;
-      border-radius:10px; cursor:pointer; font-weight:600;
-    }
-    .muted{ font-size:13px; color:#666; }
-    .divider{
-      height:1px; background:rgba(0,0,0,0.05); border:0; margin:16px 0; width:100%;
-    }
-    @media (max-width: 640px){
-      #sotiio_modal .card{ width:100%; height:auto; max-height:88vh; padding:16px; border-radius:12px; }
-      .options-grid{ grid-template-columns:1fr; }
-      .roles label{ font-size:16px; }
-      .text-input{ font-size:16px; }
-      .narrow, .narrow-left{ width:100%; min-width:0; max-width:none; }
-      #sotiio_survey_btn{ right:16px; bottom:18px; }
-    }
-
-    /* Индикатор загрузки */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 12000;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid var(--sel, #ff622b);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    .loading-text {
-      font-size: 16px;
-      color: #333;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .hidden {
-      display: none !important;
-    }
   </style>
 </head>
 <body>
 <div id="wrap">
   <div id="jsmind_container"></div>
-
-  <!-- Индикатор загрузки -->
-  <div id="loadingOverlay" class="loading-overlay hidden">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Создаём карту знаний...</div>
-  </div>
 
   <aside id="drawer" aria-hidden="true">
     <div class="dw-tabs">
@@ -241,46 +134,6 @@
       <div id="tab-raw" class="tab-content"><pre id="raw-pre">Выдели узел — здесь покажется node.data</pre></div>
     </div>
   </aside>
-</div>
-
-<!-- Форма опроса -->
-<button id="sotiio_survey_btn" title="Заполнить параметры">🧭 Параметры</button>
-<div id="sotiio_modal" role="dialog" aria-hidden="true">
-  <div class="card" role="document" aria-modal="true">
-    <button class="close-btn" id="sotiio_close" aria-label="Закрыть">&times;</button>
-    <div class="row">
-      <div class="label">Я как…</div>
-      <div class="roles narrow-left">
-        <label><input type="radio" name="role" value="Novice"> Новичок</label>
-        <label><input type="radio" name="role" value="Enthusiast"> Увлекающийся</label>
-        <label><input type="radio" name="role" value="Geek"> Гик</label>
-        <label><input type="radio" name="role" value="Pro"> Профи</label>
-      </div>
-    </div>
-    <div class="divider"></div>
-    <div class="row">
-      <div class="label">Хочу изучить…</div>
-      <div class="narrow-left">
-        <input id="sotiio_subject" class="text-input"
-               placeholder="Например: Киновселенную Marvel, мир крипто-активов, Эволюцию человека…">
-        <div class="muted" style="margin-top:6px">Укажите любую вселенную для изучения.</div>
-      </div>
-    </div>
-    <div class="divider"></div>
-    <div class="row">
-      <div class="label">Чтобы…</div>
-      <div id="sotiio_options" class="options-grid"></div>
-      <div class="add-own narrow-left" style="margin-top:10px;">
-        <input id="sotiio_own" class="text-input" placeholder="Предложите свой вариант и нажмите Enter">
-        <button class="add-btn" id="sotiio_add_own" title="Добавить">＋</button>
-      </div>
-      <div id="sotiio_selected_chips" class="chiplist narrow"></div>
-    </div>
-    <div class="actions">
-      <div class="muted" id="sotiio_feedback"></div>
-      <button id="sotiio_submit" class="primary-btn">Отправить</button>
-    </div>
-  </div>
 </div>
 
 <script src="/static/js/jsmind.js"></script>
@@ -321,7 +174,36 @@
     walk(root, 0);
   }
 
-  function renderMeta(node){
+  
+  // === UTILITIES: render jsMind from webhook response ===
+  async function showMind(mind) {
+    if (mind && mind.format === 'node_tree' && mind.data) {
+      jm.show(mind);
+    } else {
+      const conv = await fetch('/json_2_jm', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(mind)
+      });
+      const converted = await conv.json();
+      jm.show(converted);
+    }
+    // Common layout tweaks
+    jm.collapse_all();
+    const root = jm.get_root();
+    if (root) jm.expand_node(root.id);
+    setTimeout(()=>{ tagLevels(); jm.resize(); }, 100);
+    window.addEventListener('resize', ()=> jm.resize());
+  }
+
+  async function withLoader(feedbackEl, fn) {
+    const prev = feedbackEl.textContent;
+    feedbackEl.style.color = '#333';
+    feedbackEl.textContent = 'Готовим карту…';
+    try { return await fn(); }
+    finally { /* keep message */ }
+  }
+function renderMeta(node){
     const box=document.getElementById('tab-meta');
     const d=node?.data?.data || node?.data || {};
     const rows=[
@@ -361,34 +243,6 @@
 
   function escapeHtml(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;")}
 
-  // Функции для загрузки
-  function showLoading() {
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-  }
-  
-  function hideLoading() {
-    document.getElementById('loadingOverlay').classList.add('hidden');
-  }
-
-  function displayMindData(mindData) {
-    try {
-      jm.clear();
-      jm.show(mindData);
-      jm.collapse_all();
-      const root = jm.get_root();
-      if (root) jm.expand_node(root.id);
-      
-      setTimeout(() => {
-        tagLevels();
-        jm.resize();
-      }, 100);
-      
-    } catch (error) {
-      console.error('Ошибка при отображении карты:', error);
-      alert('Ошибка при отображении карты знаний');
-    }
-  }
-
   (function initDrawer(){
     const cont=document.getElementById('jsmind_container');
     const drawer=document.getElementById('drawer');
@@ -414,30 +268,220 @@
   })();
 
   async function main(){
-    if (task_id && filename) {
-      showLoading();
-      try {
-        const url=`/download_files_pyrus?task_id=${encodeURIComponent(task_id)}&filename=${encodeURIComponent(filename)}&match_mode=exact&versions=latest`;
-        const res=await fetch(url); const raw=await res.json();
-        const conv=await fetch('/json_2_jm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(raw)});
-        const mind=await conv.json();
-        jm.show(mind); jm.collapse_all(); const root=jm.get_root(); if(root) jm.expand_node(root.id);
-        
-        setTimeout(() => {
-          tagLevels();
-          jm.resize();
-        }, 100);
-        
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-      } finally {
-        hideLoading();
-      }
-    }
+    const url=`/download_files_pyrus?task_id=${encodeURIComponent(task_id)}&filename=${encodeURIComponent(filename)}&match_mode=exact&versions=latest`;
+    const res=await fetch(url); const raw=await res.json();
+    const conv=await fetch('/json_2_jm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(raw)});
+    const mind=await conv.json();
+    jm.show(mind); jm.collapse_all(); const root=jm.get_root(); if(root) jm.expand_node(root.id);
+    
+    // Добавляем классы уровням после отрисовки
+    setTimeout(() => {
+      tagLevels();
+      jm.resize();
+    }, 100);
+    
     window.addEventListener('resize',()=>{jm.resize();});
   }
+  main();
+})();
+</script>
 
-  // === ЛОГИКА ФОРМЫ ОПРОСА ===
+// ++++++++++++++++++++++++++++++++ USER STORY ++++++++++++++++++++++++++++++++++++++++
+  
+<!-- === START: Sotiio inline survey (final with left-own + dividers) — WITH COMMENTS & RENAMED PAYLOAD KEYS === -->
+<style>
+  /* =========================================
+     БАЗОВОЕ: предотвращаем «расползание» из-за box-sizing
+     ========================================= */
+  #sotiio_modal, #sotiio_modal * { box-sizing: border-box; }
+
+  /* =========================================
+     Плавающая кнопка открытия модалки
+     ========================================= */
+  #sotiio_survey_btn{
+    position: fixed; right: 20px; bottom: 24px; z-index:11000;
+    background: var(--sel,#ff622b); color:#fff; border:none; padding:12px 16px;
+    border-radius:12px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.18);
+    font-weight:600; font-family:inherit;
+  }
+
+  /* =========================================
+     Модалка-оверлей + карточка внутри
+     ========================================= */
+  #sotiio_modal{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    z-index:11010; background: rgba(0,0,0,0.45); padding:16px; overflow-x:hidden; /* убираем горизонтальный скролл */
+  }
+  #sotiio_modal .card{
+    width:min(820px,96vw); max-height:90vh; overflow:auto; background:#fff;
+    border-radius:12px; padding:18px 22px; box-shadow:0 12px 40px rgba(0,0,0,.22);
+    font-family:inherit; position:relative; overflow-x:hidden; /* доп. защита от h-scroll */
+  }
+
+  /* =========================================
+     Кнопка закрытия (крестик) в правом верхнем углу
+     ========================================= */
+  .close-btn{
+    position:absolute; top:10px; right:12px; font-size:24px; font-weight:800;
+    line-height:1; border:none; background:transparent; cursor:pointer; color:#444;
+  }
+  .close-btn:hover{ color:#000; transform:scale(1.06); }
+
+  /* =========================================
+     Общая сетка и подписи
+     ========================================= */
+  .row{ margin:14px 0; }
+  .label{ font-weight:700; margin-bottom:8px; }
+  .roles{ display:flex; flex-direction:column; gap:8px; }
+  .roles label{ display:flex; align-items:center; gap:10px; font-size:15px; }
+
+  /* =========================================
+     Узкие блоки на 60% ширины:
+     .narrow — центр, .narrow-left — прижато влево
+     ========================================= */
+  .narrow{ width:60%; min-width:300px; margin-inline:auto; }
+  .narrow-left{ width:60%; max-width:640px; margin-left:0; margin-right:auto; }
+
+  /* Текстовое поле */
+  .text-input{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid #ddd; font-size:15px;
+  }
+
+  /* =========================================
+     Карточки «Чтобы…»: сетка 2 колонки (на мобилке схлопнется)
+     ========================================= */
+  .options-grid{ display:grid; grid-template-columns:repeat(2,minmax(240px,1fr)); gap:10px; }
+  .option-card{
+    border:1px solid #e6e6e6; padding:10px 12px; border-radius:10px;
+    cursor:pointer; user-select:none; background:#fff; font-size:14px;
+  }
+  .option-card.selected{ border-color:var(--sel,#ff622b); background:rgba(255,98,43,0.06); }
+
+  /* =========================================
+     Собственный вариант (инпут + «＋» внутри поля)
+     ========================================= */
+  .add-own.narrow-left{ position:relative; }
+  .add-own .text-input{ padding-right:46px; } /* место для кнопки справа */
+  .add-own .add-btn{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    height:34px; min-width:34px; padding:0 10px;
+    background:#f7f7f7; border:1px solid #ddd; border-radius:8px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .add-own .add-btn:hover{ background:#ececec; }
+
+  /* Чипы выбранных пунктов (необязательно, но визуально удобно) */
+  .chiplist{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip{ background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 10px; border-radius:16px; font-size:13px; }
+
+  /* Нижняя панель: статус + кнопка отправки */
+  .actions{ display:flex; justify-content:flex-end; align-items:center; margin-top:16px; gap:10px; }
+  .primary-btn{
+    background:var(--sel,#ff622b); color:#fff; border:none; padding:10px 16px;
+    border-radius:10px; cursor:pointer; font-weight:600;
+  }
+  .muted{ font-size:13px; color:#666; }
+
+  /* =========================================
+     Разделители между тремя основными блоками (тонкие чёрные ~5% непрозрачности)
+     ========================================= */
+  .divider{
+    height:1px; background:rgba(0,0,0,0.05); border:0; margin:16px 0; width:100%;
+  }
+
+  /* =========================================
+     Адаптив для мобилки
+     ========================================= */
+  @media (max-width: 640px){
+    #sotiio_modal .card{ width:100%; height:auto; max-height:88vh; padding:16px; border-radius:12px; }
+    .options-grid{ grid-template-columns:1fr; }  /* карточки «Чтобы…» в одну колонку */
+    .roles label{ font-size:16px; }
+    .text-input{ font-size:16px; }
+    .narrow, .narrow-left{ width:100%; min-width:0; max-width:none; } /* узкие блоки во всю ширину */
+    #sotiio_survey_btn{ right:16px; bottom:18px; }
+  }
+</style>
+
+<!-- Плавающая кнопка вызова формы -->
+<button id="sotiio_survey_btn" title="Заполнить параметры">🧭 Параметры</button>
+
+<!-- Модалка-оверлей -->
+<div id="sotiio_modal" role="dialog" aria-hidden="true">
+  <div class="card" role="document" aria-modal="true">
+    <!-- Крестик закрытия -->
+    <button class="close-btn" id="sotiio_close" aria-label="Закрыть">&times;</button>
+
+    <!-- Блок 1: выбор роли -->
+    <div class="row">
+      <div class="label">Я как…</div>
+      <div class="roles narrow-left">
+        <label><input type="radio" name="role" value="Novice"> Новичок</label>
+        <label><input type="radio" name="role" value="Enthusiast"> Увлекающийся</label>
+        <label><input type="radio" name="role" value="Geek"> Гик</label>
+        <label><input type="radio" name="role" value="Pro"> Профи</label>
+      </div>
+    </div>
+
+    <!-- Разделитель -->
+    <div class="divider"></div>
+
+    <!-- Блок 2: тема/вселенная -->
+    <div class="row">
+      <div class="label">Хочу изучить…</div>
+      <div class="narrow-left">
+        <input id="sotiio_subject" class="text-input"
+               placeholder="Например: Киновселенную Marvel, мир крипто-активов, Эволюцию человека…">
+        <div class="muted" style="margin-top:6px">Укажите любую вселенную для изучения.</div>
+      </div>
+    </div>
+
+    <!-- Разделитель -->
+    <div class="divider"></div>
+
+    <!-- Блок 3: «Чтобы…» (варианты по выбранной роли) -->
+    <div class="row">
+      <div class="label">Чтобы…</div>
+
+      <!-- Сюда динамически добавляются карточки вариантов -->
+      <div id="sotiio_options" class="options-grid"></div>
+
+      <!-- Собственный вариант: инпут слева + «＋» справа -->
+      <div class="add-own narrow-left" style="margin-top:10px;">
+        <input id="sotiio_own" class="text-input" placeholder="Предложите свой вариант и нажмите Enter">
+        <button class="add-btn" id="sotiio_add_own" title="Добавить">＋</button>
+      </div>
+
+      <!-- Чипы выбранных вариантов (для наглядности) -->
+      <div id="sotiio_selected_chips" class="chiplist narrow"></div>
+    </div>
+
+    <!-- Нижняя панель: статус + Отправить -->
+    <div class="actions">
+      <div class="muted" id="sotiio_feedback"></div>
+      <button id="sotiio_submit" class="primary-btn">Отправить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* =========================================================
+     ССЫЛКИ НА DOM-ЭЛЕМЕНТЫ (используем по id/class)
+     ========================================================= */
+  const btn = document.getElementById('sotiio_survey_btn');   // плавающая кнопка «Параметры»
+  const modal = document.getElementById('sotiio_modal');      // оверлей модалки
+  const closeBtn = document.getElementById('sotiio_close');   // крестик закрытия
+  const optionsBox = document.getElementById('sotiio_options'); // контейнер для карточек «Чтобы…»
+  const feedback = document.getElementById('sotiio_feedback');  // текстовый статус/ошибки
+  const submitBtn = document.getElementById('sotiio_submit');   // кнопка «Отправить»
+  const ownInput = document.getElementById('sotiio_own');       // поле собственного варианта
+  const addOwnBtn = document.getElementById('sotiio_add_own');  // кнопка «＋» для добавления
+  const chips = document.getElementById('sotiio_selected_chips'); // список чипов выбранных пунктов
+
+  /* =========================================================
+     СЛОВАРЬ ПРЕСЕТОВ «Чтобы…» ПО РОЛЯМ (RU)
+     — при выборе роли формируем список карточек
+     ========================================================= */
   const roleTexts = {
     "Novice": [
       "Быстро сориентироваться в теме и не чувствовать себя потерянным",
@@ -489,18 +533,18 @@
     ]
   };
 
-  const btn = document.getElementById('sotiio_survey_btn');
-  const modal = document.getElementById('sotiio_modal');
-  const closeBtn = document.getElementById('sotiio_close');
-  const optionsBox = document.getElementById('sotiio_options');
-  const feedback = document.getElementById('sotiio_feedback');
-  const submitBtn = document.getElementById('sotiio_submit');
-  const ownInput = document.getElementById('sotiio_own');
-  const addOwnBtn = document.getElementById('sotiio_add_own');
-  const chips = document.getElementById('sotiio_selected_chips');
-
+  /* =========================================================
+     ОТКРЫТИЕ/ЗАКРЫТИЕ МОДАЛКИ
+     — open(): показывает модалку и запрещает скролл body
+     — close(): скрывает, очищает форму, возвращает скролл
+     ========================================================= */
   function open(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); feedback.textContent=''; document.body.style.overflow='hidden'; }
   function close(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); clear(); document.body.style.overflow=''; }
+
+  /* =========================================================
+     СБРОС ФОРМЫ
+     — снимаем роль, очищаем тему, список карточек и чипов
+     ========================================================= */
   function clear(){
     document.querySelectorAll('input[name="role"]').forEach(r=>r.checked=false);
     document.getElementById('sotiio_subject').value='';
@@ -509,6 +553,10 @@
     ownInput.value='';
   }
 
+  /* =========================================================
+     РЕАКЦИЯ НА ВЫБОР РОЛИ
+     — генерируем карточки «Чтобы…» на основе roleTexts[role]
+     ========================================================= */
   document.querySelectorAll('input[name="role"]').forEach(r=>{
     r.addEventListener('change', ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
@@ -525,11 +573,18 @@
     });
   });
 
+  /* =========================================================
+     ПЕРЕКЛЮЧЕНИЕ ВЫБОРА КАРТОЧКИ
+     — щёлчок по карточке -> toggle selected + обновить чипы
+     ========================================================= */
   optionsBox.addEventListener('click', e=>{
     const card = e.target.closest('.option-card'); if(!card) return;
     card.classList.toggle('selected'); syncChips();
   });
 
+  /* =========================================================
+     ОТРИСОВКА ЧИПОВ ВЫБРАННЫХ ПУНКТОВ
+     ========================================================= */
   function syncChips(){
     chips.innerHTML='';
     const selected = Array.from(optionsBox.querySelectorAll('.option-card.selected')).map(x=>x.dataset.value);
@@ -538,6 +593,11 @@
     }
   }
 
+  /* =========================================================
+     ДОБАВЛЕНИЕ СОБСТВЕННОГО ВАРИАНТА
+     — если такого текста ещё нет — создаём карточку и выделяем
+     — если уже есть — просто выделяем существующую
+     ========================================================= */
   function addOwn(){
     const val = ownInput.value.trim(); if(!val) return;
     let existing = Array.from(optionsBox.children).find(x=>x.dataset.value===val);
@@ -550,6 +610,8 @@
   ownInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addOwn(); }});
   addOwnBtn.addEventListener('click', addOwn);
 
+// ===== ОТПРАВКА ДАННЫХ В ОРКЕСТРАТОР =====
+  
   function two(n){ return String(n).padStart(2,'0'); }
   function mapIdFromNow(){
     const d = new Date();
@@ -562,87 +624,97 @@
     return `${ss}${mm}${hh}${dd}${MM}${yy}`;
   }
 
-  // Модифицированная функция отправки
+  /* =========================================================
+     ОТПРАВКА ДАННЫХ В WEBHOOK
+     — POST JSON на https://n8n.sotiio.com/webhook/us
+     — добавлен map_id = ssmmhhddmmyy
+     ========================================================= */
+  
   submitBtn.addEventListener('click', async ()=>{
     const role = document.querySelector('input[name="role"]:checked')?.value;
     const subject = document.getElementById('sotiio_subject').value.trim();
-    const chosen = Array.from(optionsBox.querySelectorAll('.option-card.selected')).map(x=>x.dataset.value);
-
+    const chosen = Array.from(document.querySelectorAll('#sotiio_options .option-card.selected')).map(x=>x.dataset.value);
     if(!role){ feedback.style.color='crimson'; feedback.textContent='Выберите роль.'; return; }
     if(!subject){ feedback.style.color='crimson'; feedback.textContent='Укажите тему/вселенную.'; return; }
     if(chosen.length===0){ feedback.style.color='crimson'; feedback.textContent='Выберите хотя бы один вариант в «Чтобы…» или добавьте свой.'; return; }
 
     const map_id = mapIdFromNow();
 
-    feedback.style.color='#333'; feedback.textContent='Отправляем…';
-    showLoading();
-    
-    try{
-      const payload = {
-        source: 'sotiio_web_survey',
-        map_id,
-        user_story: {
-          "I_as...": role,
-          "Want_to_discover_a_universe...": subject,
-          "So_that...": chosen,
-          timestamp: (new Date()).toISOString()
-        }
-      };
+    await withLoader(feedback, async () => {
+      try {
+        const payload = {
+          source: 'sotiio_web_survey',
+          map_id,
+          user_story: {
+            "I_as...": role,
+            "Want_to_discover_a_universe...": subject,
+            "So_that...": chosen,
+            timestamp: (new Date()).toISOString()
+          }
+        };
 
-      const resp = await fetch('https://n8n.sotiio.com/webhook/us', {
-        method:'POST',
-        mode:'cors',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
+        const resp = await fetch('https://n8n.sotiio.com/webhook/us', {
+          method:'POST',
+          mode:'cors',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          let t = '';
+          try { t = await resp.text(); } catch {}
+          throw new Error(`HTTP ${resp.status}${t ? ' — ' + t : ''}`);
+        }
+
+        let mind;
+        const ct = resp.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          mind = await resp.json();
+        } else {
+          const raw = await resp.text();
+          try { mind = JSON.parse(raw); } catch { throw new Error('Вебхук вернул не-JSON'); }
+        }
+
+        await showMind(mind);
+
+        feedback.style.color='green';
+        feedback.textContent='Карта готова.';
+        setTimeout(()=>{ try{ document.getElementById('sotiio_close').click(); }catch{} }, 900);
+      } catch (err) {
+        feedback.style.color='crimson';
+        feedback.textContent = 'Ошибка: ' + (err?.message || err);
+      }
+    });
+  });
 
       if(!resp.ok){ throw new Error('HTTP '+resp.status+' '+await resp.text()); }
-      
-      // Пытаемся получить JSON ответ
-      let responseData;
-      try {
-        responseData = await resp.json();
-      } catch {
-        responseData = null;
-      }
+      await resp.text().catch(()=>{});
 
-      // Если вебхук вернул данные для карты - отображаем их
-      if (responseData && responseData.mind_data) {
-        displayMindData(responseData.mind_data);
-        feedback.style.color='green'; 
-        feedback.textContent='Карта знаний создана!';
-        setTimeout(() => {
-          close();
-          hideLoading();
-        }, 1000);
-      } else {
-        // Если данных нет - просто закрываем
-        feedback.style.color='green'; 
-        feedback.textContent='Отправлено.';
-        setTimeout(() => {
-          close();
-          hideLoading();
-        }, 900);
-      }
-      
+      feedback.style.color='green'; feedback.textContent='Отправлено.'; setTimeout(close, 900);
     }catch(err){
-      feedback.style.color='crimson'; 
-      feedback.textContent = 'Ошибка при отправке: ' + (err.message||err);
-      hideLoading();
+      feedback.style.color='crimson'; feedback.textContent = 'Ошибка при отправке: ' + (err.message||err);
     }
   });
 
+  /* =========================================================
+     БИНДИНГИ ОТКРЫТИЯ/ЗАКРЫТИЯ
+     — клик по фоновой подложке, по кресту или Esc — закрыть
+     ========================================================= */
   btn.addEventListener('click', open);
   closeBtn.addEventListener('click', close);
   modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
   document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+  // Авто-открытие формы ТОЛЬКО на точном адресе https://www.sotiio.com/map.html
+  if (location.hostname === 'www.sotiio.com' && location.pathname === '/map.html') {
+  setTimeout(open, 0); // чуть позже, чтобы DOM успел прогрузиться
+}
 
-  // Авто-открытие формы при загрузке
-  setTimeout(open, 100);
-
-  // Запускаем основную функцию
-  main();
 })();
 </script>
+<!-- === END: Sotiio inline survey === -->
+
+
+
+  
 </body>
 </html>
