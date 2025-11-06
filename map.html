@@ -538,8 +538,8 @@ function renderMeta(node){
      — open(): показывает модалку и запрещает скролл body
      — close(): скрывает, очищает форму, возвращает скролл
      ========================================================= */
-  function open(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); feedback.textContent=''; document.body.style.overflow='hidden'; }
-  function close(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); clear(); document.body.style.overflow=''; }
+  function surveyOpen(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); feedback.textContent=''; document.body.style.overflow='hidden'; }
+  function surveyClose(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); clear(); document.body.style.overflow=''; }
 
   /* =========================================================
      СБРОС ФОРМЫ
@@ -686,35 +686,7 @@ function renderMeta(node){
       }
     });
   });
-
-      if(!resp.ok){ throw new Error('HTTP '+resp.status+' '+await resp.text()); }
-      await resp.text().catch(()=>{});
-
-      feedback.style.color='green'; feedback.textContent='Отправлено.'; setTimeout(close, 900);
-    }catch(err){
-      feedback.style.color='crimson'; feedback.textContent = 'Ошибка при отправке: ' + (err.message||err);
-    }
-  });
-
-  /* =========================================================
-     БИНДИНГИ ОТКРЫТИЯ/ЗАКРЫТИЯ
-     — клик по фоновой подложке, по кресту или Esc — закрыть
-     ========================================================= */
-  btn.addEventListener('click', open);
-  closeBtn.addEventListener('click', close);
-  modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-  // Авто-открытие формы ТОЛЬКО на точном адресе https://www.sotiio.com/map.html
-  if (location.hostname === 'www.sotiio.com' && location.pathname === '/map.html') {
-  setTimeout(open, 0); // чуть позже, чтобы DOM успел прогрузиться
-}
-
 })();
 </script>
 <!-- === END: Sotiio inline survey === -->
 
-
-
-  
-</body>
-</html>
