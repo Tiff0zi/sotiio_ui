@@ -1,22 +1,3 @@
-<!doctype html>
-<!--
-  FILE: index.html (Главная, оркестратор + viewer jsmind)
-  ROLE:
-    • Главная страница и весь «клей» здесь.
-    • Слева — только viewer jsmind (ничего не знает о вебхуках).
-    • Справа — независимый контейнер (iframe фиксированной ширины).
-    • Сверху кнопка открывает модалку userstory (iframe-оверлей).
-  COMMUNICATION:
-    • Принимает: postMessage({type:'map:set', payload}) → рисует карту.
-    • По клику на узле: postMessage({type:'container:set', payload: node.data}) → в правый iframe.
-  API:
-    • window.MapViewer.setData(mindLike)
-    • window.UI.openUserStory() / closeUserStory()
-  DEPENDENCIES:
-    • jsMind CSS/JS — поправь пути под себя:
-      <link rel="stylesheet" href="/static/style/jsmind.css">
-      <script src="/static/js/jsmind.js"></script>
--->
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
@@ -35,9 +16,14 @@
     
     .layout { 
       display: grid;
-      grid-template-columns: 1fr clamp(360px, 40vw, 880px);
+      grid-template-columns: 1fr 0px; /* Изначально правая колонка скрыта */
       height: 100vh;
       position: relative;
+      transition: grid-template-columns 0.3s ease;
+    }
+
+    .layout.with-container {
+      grid-template-columns: 1fr clamp(360px, 40vw, 880px);
     }
 
     /* Viewer */
@@ -76,11 +62,17 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
-    /* Container iframe */
+    /* Container iframe - изначально скрыт */
     aside {
       border-left: 1px solid rgba(0,0,0,0.08);
       background: #ece6df;
       overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .layout.with-container aside {
+      opacity: 1;
     }
     
     #containerFrame {
@@ -88,6 +80,28 @@
       height: 100%;
       border: 0;
       display: block;
+    }
+
+    /* Close button for container */
+    .close-container {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 101;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      display: none;
+    }
+    
+    .layout.with-container .close-container {
+      display: block;
+    }
+    
+    .close-container:hover {
+      color: #333;
     }
 
     /* Modal */
@@ -137,6 +151,7 @@
       border: 1px solid rgba(0,0,0,.10) !important;
       box-shadow: 0 2px 4px rgba(0,0,0,.10) !important;
       font-family: inherit !important;
+      cursor: pointer;
     }
 
     jmnode.jsmind-root { 
@@ -169,7 +184,7 @@
   </style>
 </head>
 <body>
-  <div class="layout">
+  <div class="layout" id="mainLayout">
     <section id="viewerWrap">
       <div class="topbar">
         <button class="btn" onclick="window.UI.openUserStory()">🧭 Новое исследование</button>
@@ -178,6 +193,7 @@
     </section>
 
     <aside>
+      <button class="close-container" onclick="window.UI.closeContainer()" title="Закрыть панель">×</button>
       <iframe id="containerFrame" src="container.html" title="Детали узла"></iframe>
     </aside>
   </div>
@@ -199,6 +215,8 @@
       view:{hmargin:140, vmargin:30, line_style:'curved'},
       layout:{hspace:80, vspace:20, pspace:10, direction:'right'}
     });
+
+    let selectedNode = null;
 
     function tagLevels(){
       const root = jm.get_root();
@@ -285,14 +303,23 @@
       window.addEventListener('resize', ()=> jm.resize());
     }
 
-    // Клик по узлу -> отправляем в контейнер
-    document.getElementById('jsmind_container').addEventListener('click', (e)=>{
-      const el = e.target.closest('jmnode');
-      if(!el) return;
+    // Функции для управления контейнером
+    function openContainer(node, element) {
+      const layout = document.getElementById('mainLayout');
+      layout.classList.add('with-container');
       
-      const node = jm.get_node(el.getAttribute('nodeid'));
-      if(!node) return;
+      // Снимаем выделение с предыдущего узла
+      if (selectedNode) {
+        selectedNode.classList.remove('selected');
+      }
       
+      // Выделяем текущий узел
+      if (element) {
+        element.classList.add('selected');
+        selectedNode = element;
+      }
+      
+      // Отправляем данные в контейнер
       const envelope = { 
         type: 'container:set', 
         payload: (node.data || {}) 
@@ -302,6 +329,39 @@
         document.getElementById('containerFrame').contentWindow.postMessage(envelope, '*');
       }catch(err){
         console.warn('containerFrame postMessage failed', err);
+      }
+    }
+
+    function closeContainer() {
+      const layout = document.getElementById('mainLayout');
+      layout.classList.remove('with-container');
+      
+      // Снимаем выделение с узла
+      if (selectedNode) {
+        selectedNode.classList.remove('selected');
+        selectedNode = null;
+      }
+    }
+
+    // Клик по узлу -> открываем контейнер
+    document.getElementById('jsmind_container').addEventListener('click', (e)=>{
+      const el = e.target.closest('jmnode');
+      if(!el) {
+        // Клик вне узла - закрываем контейнер
+        closeContainer();
+        return;
+      }
+      
+      const node = jm.get_node(el.getAttribute('nodeid'));
+      if(!node) return;
+      
+      openContainer(node, el);
+    });
+
+    // Закрытие по Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeContainer();
       }
     });
 
@@ -349,7 +409,12 @@
       if(e.target === modal) closeUserStory();
     });
     
-    window.UI = { openUserStory, closeUserStory };
+    window.UI = { 
+      openUserStory, 
+      closeUserStory,
+      openContainer,
+      closeContainer
+    };
 
     // Авто-открытие формы на продакшене
     if (location.hostname === 'www.sotiio.com' && location.pathname === '/index.html') {
