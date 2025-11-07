@@ -33,6 +33,7 @@
       padding: 22px 26px;
       height: auto;
       min-height: 100%;
+      position: relative;
     }
     
     h1 {
@@ -160,6 +161,11 @@
       font-family: inherit;
     }
     
+    .primary-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
     .muted {
       font-size: 13px;
       color: #666;
@@ -172,6 +178,54 @@
       border: 0;
       margin: 20px 0;
       width: 100%;
+    }
+    
+    /* Стили для индикатора загрузки */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      z-index: 100;
+    }
+    
+    .loading-overlay.active {
+      display: flex;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #ff622b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+    
+    .loading-text {
+      font-size: 16px;
+      color: #333;
+      text-align: center;
+    }
+    
+    .loading-details {
+      font-size: 14px;
+      color: #666;
+      margin-top: 8px;
+      text-align: center;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     
     @media (max-width: 768px) {
@@ -194,6 +248,12 @@
 </head>
 <body>
   <div class="wrap">
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text">Создаём вашу карту знаний...</div>
+      <div class="loading-details" id="loadingDetails">Это займет несколько секунд</div>
+    </div>
+    
     <h1>Новое исследование</h1>
     
     <!-- Блок 1: выбор роли -->
@@ -247,6 +307,14 @@
     const chips = document.getElementById('chips');
     const status = document.getElementById('status');
     const submit = document.getElementById('submit');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingDetails = document.getElementById('loadingDetails');
+
+    let currentMapId = null;
+    let pollInterval = null;
+    let pollAttempts = 0;
+    const MAX_POLL_ATTEMPTS = 30; // 30 попыток * 2 секунды = 60 секунд максимум
+    const POLL_INTERVAL = 2000; // 2 секунды
 
     const roleTexts = {
       "Novice": [
@@ -388,6 +456,58 @@
       status.style.color = c || '#333';
     };
 
+    // Функция опроса карты
+    async function pollForMap() {
+      if (!currentMapId) return;
+      
+      pollAttempts++;
+      loadingDetails.textContent = `Попытка ${pollAttempts}/${MAX_POLL_ATTEMPTS}...`;
+      
+      try {
+        const response = await fetch('https://n8n.sotiio.com/webhook/getmap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ map_id: currentMapId })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Проверяем, есть ли карта в ответе
+        if (data && data.map) {
+          // Карта найдена!
+          clearInterval(pollInterval);
+          loadingOverlay.classList.remove('active');
+          
+          // Отправляем данные в родительское окно
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'map:set', payload: data }, '*');
+          }
+          
+          // Закрываем модалку
+          setTimeout(() => {
+            if (window.parent && window.parent.UI) {
+              window.parent.UI.closeUserStory();
+            }
+          }, 500);
+          
+        } else if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+          // Превышено максимальное количество попыток
+          clearInterval(pollInterval);
+          loadingOverlay.classList.remove('active');
+          say('Превышено время ожидания. Карта не была создана.', 'crimson');
+          submit.disabled = false;
+        }
+        // Если карты еще нет, продолжаем опрос
+      } catch (error) {
+        console.error('Ошибка при опросе карты:', error);
+        // Продолжаем попытки даже при ошибках сети
+      }
+    }
+
     // Отправка данных
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
@@ -410,15 +530,17 @@
         return;
       }
 
-      const map_id = mapIdFromNow();
+      currentMapId = mapIdFromNow();
+      pollAttempts = 0;
 
       submit.disabled = true;
-      say('Отправляем…');
-      
-      try{
+      loadingOverlay.classList.add('active');
+      say(''); // Очищаем статус
+
+      try {
         const payload = {
           source: 'sotiio_web_survey',
-          map_id,
+          map_id: currentMapId,
           user_story: {
             "I_as...": role,
             "Want_to_discover_a_universe...": subject,
@@ -427,9 +549,9 @@
           }
         };
 
+        // Отправляем запрос на создание карты
         const resp = await fetch('https://n8n.sotiio.com/webhook/us', {
           method: 'POST',
-          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
@@ -439,33 +561,15 @@
           try{ t = await resp.text(); }catch{}
           throw new Error(`HTTP ${resp.status}${t ? ' — ' + t : ''}`);
         }
-        
-        let data;
-        const ct = resp.headers.get('content-type') || '';
-        if(ct.includes('application/json')){
-          data = await resp.json();
-        } else {
-          const raw = await resp.text();
-          try{ data = JSON.parse(raw); }catch{
-            throw new Error('Вебхук вернул не-JSON');
-          }
-        }
 
-        // Отправляем данные в родительское окно
-        if(window.parent && window.parent !== window){
-          window.parent.postMessage({ type: 'map:set', payload: data }, '*');
-        }
+        // Запускаем опрос для получения карты
+        pollInterval = setInterval(pollForMap, POLL_INTERVAL);
+        // Первый опрос сразу
+        setTimeout(pollForMap, 500);
         
-        say('Готово. Карта отправлена.', 'green');
-        setTimeout(() => {
-          if(window.parent && window.parent.UI){
-            window.parent.UI.closeUserStory();
-          }
-        }, 1200);
-        
-      }catch(err){
-        say('Ошибка: ' + (err?.message || err), 'crimson');
-      }finally{
+      } catch (error) {
+        loadingOverlay.classList.remove('active');
+        say('Ошибка при отправке: ' + (error?.message || error), 'crimson');
         submit.disabled = false;
       }
     });
