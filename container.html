@@ -1,0 +1,121 @@
+<!doctype html>
+<!--
+  FILE: container.html
+  ROLE: Самостоятельная правая панель (Wiki / Meta / Links / Raw).
+        Ни о карте, ни о вебхуках не знает. Просто принимает объект узла.
+  API:
+    - window.ContainerAPI.setData(nodeLike)
+  Связь:
+    - Слушает postMessage({type:'container:set', payload: nodeLike}) и рендерит вкладки.
+-->
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>sotiio container</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;background:#ece6df}
+    #drawer{position:fixed;right:0;top:0;height:100vh;width:40vw;max-width:880px;min-width:320px;background:#ece6df;color:#131313;
+      box-shadow:-12px 0 32px rgba(0,0,0,.18), -1px 0 0 rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden;border-left:1px solid rgba(0,0,0,.08)}
+    .dw-tabs{display:flex;background:#f7f7f7;border-bottom:1px solid #eee}
+    .dw-tab{flex:1;padding:12px 10px;text-align:center;cursor:pointer;border:0;background:transparent;font-weight:500;color:#666;border-bottom:2px solid transparent}
+    .dw-tab.active{background:#ece6df;border-bottom:2px solid #ff622b;color:#111}
+    .dw-body{padding:12px 16px;overflow:auto;height:100%}
+    .tab-content{display:none}.tab-content.active{display:block}
+    pre{margin:0;padding:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace}
+    table.meta{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:12px}
+    table.meta th,table.meta td{padding:10px 12px;border-bottom:1px solid #eee;font-size:14px}
+    table.meta th{width:30%;background:#fafafa;text-align:left;color:#444}
+    .wiki-item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin:0 0 10px}
+    .wiki-item h3{margin:0 0 6px;font-size:15px;color:#222}
+    .wiki-item div{font-size:14px;color:#333;line-height:1.4}
+    .empty{color:#777;font-style:italic;padding:16px 0}
+  </style>
+</head>
+<body>
+  <aside id="drawer" aria-hidden="false">
+    <div class="dw-tabs">
+      <button class="dw-tab active" data-tab="meta">Meta</button>
+      <button class="dw-tab" data-tab="wiki">Wiki</button>
+      <button class="dw-tab" data-tab="links">Links</button>
+      <button class="dw-tab" data-tab="raw">Raw Data</button>
+    </div>
+    <div class="dw-body">
+      <div id="tab-meta"  class="tab-content active"><div class="empty">Нет мета-данных.</div></div>
+      <div id="tab-wiki"  class="tab-content"><div class="empty">Для этого узла нет информации Wiki.</div></div>
+      <div id="tab-links" class="tab-content"><div class="empty">Пусто.</div></div>
+      <div id="tab-raw"   class="tab-content"><pre id="raw-pre">Здесь появится node.data</pre></div>
+    </div>
+  </aside>
+
+  <script>
+  (function(){
+    // --- Переключение вкладок ---
+    document.querySelectorAll('.dw-tab').forEach(t=>{
+      t.addEventListener('click',()=>{
+        const id=t.getAttribute('data-tab');
+        document.querySelectorAll('.dw-tab').forEach(x=>x.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active'); document.getElementById('tab-'+id).classList.add('active');
+      });
+    });
+
+    function escapeHtml(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;")}
+
+    function renderMeta(nodeLike){
+      const box=document.getElementById('tab-meta');
+      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const rows=[
+        ['ID', d.node_id || d.id || '—'],
+        ['Название', d.label || d.topic || '—'],
+        ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой':'Дочерний') || '—'],
+      ];
+      const meta= (d.meta && typeof d.meta==='object') ? d.meta : {};
+      const pre=JSON.stringify(meta,null,2);
+      box.innerHTML=`<table class="meta"><tbody>
+        ${rows.map(r=>`<tr><th>${r[0]}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="empty">Мета-данные</div><pre>${escapeHtml(pre)}</pre>`;
+    }
+
+    function renderWiki(nodeLike){
+      const box=document.getElementById('tab-wiki');
+      const d=nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const meta=d.meta;
+      if(!meta||typeof meta!=='object'){ box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>'; return; }
+      const inner=(meta.meta && typeof meta.meta==='object')? meta.meta:{};
+      const piles=[inner.text,inner.number,inner.select,inner.checkbox,inner.date,
+        meta.meta_text,meta.meta_number,meta.meta_select,meta.meta_checkbox,meta.meta_date].filter(Array.isArray);
+      const items=[];
+      for(const arr of piles){ for(const it of arr){ if(it&&typeof it==='object'){ items.push({n:it.name??'',v:it.value??''}); } } }
+      if(!items.length){ box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>';return; }
+      box.innerHTML=items.map(({n,v})=>`<div class="wiki-item"><h3>${escapeHtml(n)}</h3><div>${escapeHtml(v)}</div></div>`).join('');
+    }
+
+    function renderRaw(nodeLike){
+      const pre=document.getElementById('raw-pre');
+      let txt='null'; try{ txt=JSON.stringify(nodeLike??null,null,2);}catch(e){txt=String(nodeLike);}
+      pre.textContent=txt;
+    }
+
+    function setData(nodeLike){
+      renderMeta(nodeLike);
+      renderWiki(nodeLike);
+      renderRaw(nodeLike);
+    }
+
+    // --- Слушатель внешних сообщений ---
+    window.addEventListener('message', (ev)=>{
+      const msg = ev.data || {};
+      if (msg && msg.type === 'container:set') {
+        setData(msg.payload);
+      }
+    });
+
+    // --- Публичный API контейнера ---
+    window.ContainerAPI = { setData };
+
+  })();
+  </script>
+</body>
+</html>
