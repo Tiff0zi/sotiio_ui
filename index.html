@@ -1,35 +1,52 @@
+<!-- =============================================
+FILE: index.html (Главная, оркестратор + viewer jsmind)
+ROLE:
+  • Главная страница, где собрана ВЕСЬ «клей».
+  • Внутри — чистый viewer jsMind (без знаний о вебхуках) + вся связка через postMessage.
+  • Открывает справа контейнер (как iframe) и модалку userstory (как iframe-оверлей).
+  • Принимает данные карты через:
+      1) postMessage({type:'map:set', payload}) — от userstory.html
+      2) window.MapViewer.setData(data) — внешний вызов
+  • По клику на узле — отправляет в контейнер: postMessage({type:'container:set', payload: node.data})
+DEPENDENCIES:
+  • /static/js/jsmind.js  (замени на свой путь)
+  • /static/style/jsmind.css
+API:
+  • window.MapViewer.setData(mindLike)
+  • window.MapViewer.getInstance()
+  • window.UI.openUserStory() / closeUserStory()
+NOTES:
+  • Весь клей ТУТ, как ты просил.
+============================================== -->
 <!doctype html>
-<!--
-  FILE: index.html
-  ROLE: Чистый viewer jsmind. Никаких вебхуков/форм. Только:
-    - отдаёт контейнеру данные по выбранному узлу через postMessage
-    - принимает данные карты через postMessage({type:'map:set', payload}) ИЛИ через window.MapViewer.setData(...)
-  API:
-    - window.MapViewer.setData(mindLike)  // показать карту
-    - window.MapViewer.getInstance()      // вернуть jsMind instance
-  Связь:
-    - При клике по узлу публикует: postMessage({type:'container:set', payload: nodeLike})
-    - Слушает:  postMessage({type:'map:set', payload: mindLike})
-  Зависимости:
-    - /static/style/jsmind.css
-    - /static/js/jsmind.js
--->
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>sotiio map — viewer only</title>
+  <title>sotiio — index (viewer + glue)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/static/style/jsmind.css" />
-
   <style>
-    html, body { height:100%; margin:0; overflow:hidden;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif; }
-    #jsmind_container { height:100vh; width:100vw; background:#ece0d1; overflow:visible; }
+    html, body { height:100%; margin:0; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif; }
+    .layout { display:grid; grid-template-columns: 1fr 40vw; height:100vh; }
+    #viewerWrap { position:relative; background:#ece0d1; }
+    #jsmind_container { position:absolute; inset:0; }
 
-    /* Кофейная палитра + уровни */
+    /* правая панель как iframe */
+    #containerFrame { width:100%; height:100%; border:0; background:#ece6df; }
+
+    /* верхняя панель действий */
+    .topbar { position:absolute; top:10px; left:10px; display:flex; gap:8px; z-index:5 }
+    .btn { background:#ff622b; color:#fff; border:0; padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15) }
+
+    /* модалка с userstory как iframe-оверлей */
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; }
+    .modal.open{ display:flex; }
+    .modal-card{ width:min(920px, 92vw); height:min(660px, 88vh); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35) }
+    #userstoryFrame{ width:100%; height:100%; border:0 }
+
+    /* jmnode стили (палитра уровней) */
     :root { --bg:#ece0d1; --lvl0:#dbc1ac; --lvl1:#967259; --lvl2:#634832; --lvl3:#38220f; --sel:#ff622b; }
-    jmnode{ border-radius:10px!important; border:1px solid rgba(0,0,0,.1)!important;
-            box-shadow:0 2px 4px rgba(0,0,0,.1)!important; font-family:inherit; }
+    jmnode{ border-radius:10px!important; border:1px solid rgba(0,0,0,.1)!important; box-shadow:0 2px 4px rgba(0,0,0,.1)!important; font-family:inherit; }
     jmnode.jsmind-root { background:var(--lvl0)!important; color:#1f1f1f!important; font-size:20px!important; }
     jmnode.lvl-1 { background:var(--lvl1)!important; color:#fff!important; }
     jmnode.lvl-2 { background:var(--lvl2)!important; color:#fff!important; }
@@ -38,58 +55,66 @@
   </style>
 </head>
 <body>
-  <div id="jsmind_container"></div>
+  <div class="layout">
+    <!-- Левая часть: jsMind viewer + кнопки -->
+    <section id="viewerWrap">
+      <div class="topbar">
+        <button class="btn" onclick="window.UI.openUserStory()">Новое исследование (user story)</button>
+      </div>
+      <div id="jsmind_container"></div>
+    </section>
+
+    <!-- Правая часть: независимый контейнер во фрейме -->
+    <aside>
+      <iframe id="containerFrame" src="container.html" title="sotiio container"></iframe>
+    </aside>
+  </div>
+
+  <!-- Модалка с userstory.html как iframe -->
+  <div id="modalUS" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <iframe id="userstoryFrame" src="userstory.html" title="sotiio userstory"></iframe>
+    </div>
+  </div>
 
   <script src="/static/js/jsmind.js"></script>
   <script>
   (function(){
-    // --- Создаём jsMind (только viewer) ---
+    // =============================
+    // 1) jsMind viewer (локально)
+    // =============================
     const jm = new jsMind({
-      container:'jsmind_container',
-      editable:false, support_html:true,
+      container:'jsmind_container', editable:false, support_html:true,
       view:{ hmargin:140, vmargin:30, line_style:'curved' },
       layout:{ hspace:80, vspace:20, pspace:10, direction:'right' }
     });
-    window.__jm = jm; // на всякий случай
 
-    // --- Помощники: уровни для кастомных стилей ---
-    function tagLevels() {
+    function tagLevels(){
       const root = jm.get_root(); if(!root) return;
       const walk = (node, level) => {
         const el = document.querySelector(`.jmnode[nodeid="${node.id}"]`);
         if (el) {
           el.classList.remove('lvl-0','lvl-1','lvl-2','lvl-3','jsmind-root');
           if (level === 0) el.classList.add('jsmind-root');
-          else el.classList.add('lvl-' + Math.min(level, 3));
+          else el.classList.add('lvl-'+Math.min(level,3));
         }
-        (node.children||[]).forEach(ch => walk(ch, level+1));
+        (node.children||[]).forEach(ch=>walk(ch, level+1));
       };
       walk(root, 0);
     }
 
-    // --- Мини-конвертер (если к нам пришёл "почти-узловой" json, но не node_tree) ---
     function toNodeTreeIfPossible(src){
       try{
-        // Уже node_tree?
-        if (src && src.format === 'node_tree' && src.data) return src;
-
-        // Похож на наш "map-root": { label, node_id, children }
+        if (src && src.format==='node_tree' && src.data) return src; // уже норм
         const looksLike = (n)=> n && (n.label || n.topic) && (n.node_id || n.id);
         function mapNode(n){
-          if(!n || typeof n!=='object') return null;
-          const out = {
-            id: String(n.node_id||n.id),
-            topic: String(n.label||n.topic||''),
-          };
-          // всё несистемное — в data
-          const {label,node_id,topic,children,...rest} = n;
-          const dataPack = { data: { node_id: node_id||n.id, label: label||topic||'', ...(rest||{}) } };
-          if (Array.isArray(children)){
-            out.children = children.map(mapNode).filter(Boolean);
-          }
+          if(!n||typeof n!=='object') return null;
+          const out={ id:String(n.node_id||n.id), topic:String(n.label||n.topic||'') };
+          const {label,node_id,topic,children,...rest}=n;
+          const dataPack={ data:{ node_id: node_id||n.id, label: label||topic||'', ...(rest||{}) } };
+          if(Array.isArray(children)){ out.children=children.map(mapNode).filter(Boolean); }
           return Object.assign(out, { data: dataPack });
         }
-
         if (looksLike(src)) return { format:'node_tree', data: mapNode(src) };
         if (src && src.map && looksLike(src.map)) return { format:'node_tree', data: mapNode(src.map) };
         if (Array.isArray(src)){
@@ -99,49 +124,290 @@
           }
         }
       }catch(e){}
-      // Не трогаем — пусть будет как есть (если это node_tree — покажется, если нет — бросим ошибку)
-      return src;
+      return src; // вернём как есть
     }
 
-    // --- Показать карту ---
     async function setData(mind){
       const safe = toNodeTreeIfPossible(mind);
       if (!safe || safe.format!=='node_tree' || !safe.data) {
-        console.error('index.html viewer: ожидаю {format:"node_tree", data:{...}}'); 
+        console.error('index.html: нужен {format:"node_tree", data:{...}}');
         throw new Error('Неверный формат карты: нужен node_tree');
       }
-      jm.show(safe);
-      jm.collapse_all();
+      jm.show(safe); jm.collapse_all();
       const root = jm.get_root(); if(root) jm.expand_node(root.id);
       setTimeout(()=>{ tagLevels(); jm.resize(); }, 80);
       window.addEventListener('resize', ()=> jm.resize());
     }
 
-    // --- Клик по узлу -> отправим контейнеру node.data ---
+    // Клик по узлу -> шлём в правый контейнер
     document.getElementById('jsmind_container').addEventListener('click', (e)=>{
       const el = e.target.closest('jmnode'); if(!el) return;
       const node = jm.get_node(el.getAttribute('nodeid')); if(!node) return;
-      try {
-        const envelope = { type:'container:set', payload: (node.data||{}) };
-        // шлём и в parent (в случае iframe), и в opener (в случае окна)
-        if (window.parent && window.parent !== window) window.parent.postMessage(envelope, '*');
-        if (window.opener) window.opener.postMessage(envelope, '*');
-      } catch(err){ console.warn('postMessage to container failed', err); }
+      const envelope = { type:'container:set', payload:(node.data||{}) };
+      try{ document.getElementById('containerFrame').contentWindow.postMessage(envelope, '*'); }catch(err){ console.warn('containerFrame PM failed', err); }
     });
 
-    // --- Слушаем внешнюю установку карты ---
+    // Публичный API viewer-а
+    window.MapViewer = { setData, getInstance(){ return jm; } };
+
+    // =============================
+    // 2) Склейка postMessage здесь
+    // =============================
     window.addEventListener('message', (ev)=>{
       const msg = ev.data || {};
-      if (msg && msg.type === 'map:set') {
-        setData(msg.payload).catch(err => alert('Ошибка показа карты: '+err.message));
+      if (msg.type === 'map:set') {
+        setData(msg.payload).catch(err=> alert('Ошибка показа карты: '+err.message));
+      }
+      if (msg.type === 'container:set') {
+        try{ document.getElementById('containerFrame').contentWindow.postMessage(msg, '*'); }catch(err){ /*noop*/ }
       }
     });
 
-    // --- Публичный API viewer-а ---
-    window.MapViewer = {
-      setData,
-      getInstance(){ return jm; }
+    // =============================
+    // 3) Модалка userstory внутри index
+    // =============================
+    const modal = document.getElementById('modalUS');
+    function openUserStory(){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); }
+    function closeUserStory(){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+
+    // Закрытие по клику вне карточки
+    modal.addEventListener('click', (e)=>{ if(e.target===modal) closeUserStory(); });
+
+    // API UI (можно вызывать из консоли)
+    window.UI = { openUserStory, closeUserStory };
+
+    // Если хочешь стартовую карту — раскомментируй и подай объект:
+    // setData({ format:'node_tree', data:{ id:'root', topic:'Hello', children:[{id:'c1',topic:'node 1'}] } });
+  })();
+  </script>
+</body>
+</html>
+
+
+<!-- =============================================
+FILE: container.html (Независимый правый контейнер)
+ROLE:
+  • Самодостаточная правая панель. Ничего не знает о карте и вебхуках.
+  • Слушает postMessage({type:'container:set', payload: nodeLike}) и рендерит вкладки.
+API:
+  • window.ContainerAPI.setData(nodeLike)
+============================================== -->
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>sotiio container</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;background:#ece6df}
+    #drawer{position:fixed;right:0;top:0;height:100vh;width:100%;background:#ece6df;color:#131313;box-shadow:-12px 0 32px rgba(0,0,0,.18), -1px 0 0 rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden;border-left:1px solid rgba(0,0,0,.08)}
+    .dw-tabs{display:flex;background:#f7f7f7;border-bottom:1px solid #eee}
+    .dw-tab{flex:1;padding:12px 10px;text-align:center;cursor:pointer;border:0;background:transparent;font-weight:500;color:#666;border-bottom:2px solid transparent}
+    .dw-tab.active{background:#ece6df;border-bottom:2px solid #ff622b;color:#111}
+    .dw-body{padding:12px 16px;overflow:auto;height:100%}
+    .tab-content{display:none}.tab-content.active{display:block}
+    pre{margin:0;padding:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace}
+    table.meta{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:12px}
+    table.meta th,table.meta td{padding:10px 12px;border-bottom:1px solid #eee;font-size:14px}
+    table.meta th{width:30%;background:#fafafa;text-align:left;color:#444}
+    .wiki-item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin:0 0 10px}
+    .wiki-item h3{margin:0 0 6px;font-size:15px;color:#222}
+    .wiki-item div{font-size:14px;color:#333;line-height:1.4}
+    .empty{color:#777;font-style:italic;padding:16px 0}
+  </style>
+</head>
+<body>
+  <aside id="drawer" aria-hidden="false">
+    <div class="dw-tabs">
+      <button class="dw-tab active" data-tab="meta">Meta</button>
+      <button class="dw-tab" data-tab="wiki">Wiki</button>
+      <button class="dw-tab" data-tab="links">Links</button>
+      <button class="dw-tab" data-tab="raw">Raw Data</button>
+    </div>
+    <div class="dw-body">
+      <div id="tab-meta"  class="tab-content active"><div class="empty">Нет мета-данных.</div></div>
+      <div id="tab-wiki"  class="tab-content"><div class="empty">Для этого узла нет информации Wiki.</div></div>
+      <div id="tab-links" class="tab-content"><div class="empty">Пусто.</div></div>
+      <div id="tab-raw"   class="tab-content"><pre id="raw-pre">Здесь появится node.data</pre></div>
+    </div>
+  </aside>
+
+  <script>
+  (function(){
+    document.querySelectorAll('.dw-tab').forEach(t=>{
+      t.addEventListener('click',()=>{
+        const id=t.getAttribute('data-tab');
+        document.querySelectorAll('.dw-tab').forEach(x=>x.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active'); document.getElementById('tab-'+id).classList.add('active');
+      });
+    });
+
+    function escapeHtml(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;")}
+
+    function renderMeta(nodeLike){
+      const box=document.getElementById('tab-meta');
+      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const rows=[
+        ['ID', d.node_id || d.id || '—'],
+        ['Название', d.label || d.topic || '—'],
+        ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой':'Дочерний') || '—'],
+      ];
+      const meta= (d.meta && typeof d.meta==='object') ? d.meta : {};
+      const pre=JSON.stringify(meta,null,2);
+      box.innerHTML=`<table class="meta"><tbody>
+        ${rows.map(r=>`<tr><th>${r[0]}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="empty">Мета-данные</div><pre>${escapeHtml(pre)}</pre>`;
+    }
+
+    function renderWiki(nodeLike){
+      const box=document.getElementById('tab-wiki');
+      const d=nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const meta=d.meta;
+      if(!meta||typeof meta!=='object'){ box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>'; return; }
+      const inner=(meta.meta && typeof meta.meta==='object')? meta.meta:{};
+      const piles=[inner.text,inner.number,inner.select,inner.checkbox,inner.date,
+        meta.meta_text,meta.meta_number,meta.meta_select,meta.meta_checkbox,meta.meta_date].filter(Array.isArray);
+      const items=[];
+      for(const arr of piles){ for(const it of arr){ if(it&&typeof it==='object'){ items.push({n:it.name??'',v:it.value??''}); } } }
+      if(!items.length){ box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>';return; }
+      box.innerHTML=items.map(({n,v})=>`<div class="wiki-item"><h3>${escapeHtml(n)}</h3><div>${escapeHtml(v)}</div></div>`).join('');
+    }
+
+    function renderRaw(nodeLike){
+      const pre=document.getElementById('raw-pre');
+      let txt='null'; try{ txt=JSON.stringify(nodeLike??null,null,2);}catch(e){txt=String(nodeLike);} 
+      pre.textContent=txt;
+    }
+
+    function setData(nodeLike){ renderMeta(nodeLike); renderWiki(nodeLike); renderRaw(nodeLike); }
+
+    window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='container:set') setData(msg.payload); });
+    window.ContainerAPI = { setData };
+  })();
+  </script>
+</body>
+</html>
+
+
+<!-- =============================================
+FILE: userstory.html (Независимая форма запроса)
+ROLE:
+  • Делает POST на https://n8n.sotiio.com/webhook/us
+  • Про карту/контейнер не знает; по результату шлёт наружу: postMessage({type:'map:set', payload})
+COMMUNICATION:
+  • Отправляет в parent (встроена внутри index как iframe)
+============================================== -->
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>sotiio user story</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body{height:100%;margin:0;background:#f6f6f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif}
+    .wrap{max-width:760px;margin:32px auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.08);padding:18px 22px}
+    h1{margin:6px 0 12px 0;font-size:20px}
+    .row{margin:12px 0}
+    .label{font-weight:700;margin-bottom:8px}
+    .roles{display:flex;gap:14px;flex-wrap:wrap}
+    .roles label{display:flex;align-items:center;gap:8px}
+    .text-input{width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:10px;font-size:15px}
+    .options{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:10px;margin-top:8px}
+    .opt{border:1px solid #e6e6e6;padding:10px 12px;border-radius:10px;cursor:pointer;background:#fff;font-size:14px}
+    .opt.selected{border-color:#ff622b;background:rgba(255,98,43,0.06)}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .chip{background:#f3f4f6;border:1px solid #e5e7eb;padding:6px 10px;border-radius:16px;font-size:13px}
+    .actions{display:flex;justify-content:flex-end;align-items:center;margin-top:16px;gap:10px}
+    .primary{background:#ff622b;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+    .muted{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>User Story</h1>
+    <div class="row">
+      <div class="label">Я как…</div>
+      <div class="roles">
+        <label><input type="radio" name="role" value="Novice"> Новичок</label>
+        <label><input type="radio" name="role" value="Enthusiast"> Увлекающийся</label>
+        <label><input type="radio" name="role" value="Geek"> Гик</label>
+        <label><input type="radio" name="role" value="Pro"> Профи</label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label">Хочу изучить…</div>
+      <input id="subject" class="text-input" placeholder="Например: Киновселенную Marvel, мир крипто-активов…">
+    </div>
+    <div class="row">
+      <div class="label">Чтобы…</div>
+      <div id="opts" class="options"></div>
+      <div style="margin-top:8px"><input id="own" class="text-input" placeholder="Свой вариант — Enter чтобы добавить"></div>
+      <div id="chips" class="chips"></div>
+    </div>
+    <div class="actions">
+      <div id="status" class="muted"></div>
+      <button id="submit" class="primary">Отправить</button>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const optsBox=document.getElementById('opts');
+    const ownInput=document.getElementById('own');
+    const chips=document.getElementById('chips');
+    const status=document.getElementById('status');
+    const submit=document.getElementById('submit');
+
+    const roleTexts={
+      Novice:["Быстро сориентироваться в теме","Понимать базовый разговор","Отличать ключевые понятия","Иметь шпаргалку по основам","Понять, интересна ли тема","Избежать элементарных ошибок","Общий обзор","Связь с реальной жизнью","Быть в курсе трендов","Упорядочить начальные знания"],
+      Enthusiast:["Разобраться, как всё устроено","Видеть логические связи","Просто объяснять сложное","Применять знания","Рассуждать и делать выводы","Структурировать знания","Видеть целостную картину","Сравнивать с альтернативами","Получать удовольствие","Навести порядок"],
+      Geek:["Эффективно использовать инструменты","Получать преимущ. от глубины","Стать экспертом","Лучшие практики","Монетизировать знания","Критически оценивать решения","Наставничество","Тактические решения","Адаптация подходов","Побеждать в дискуссиях"],
+      Pro:["Видеть систему целиком","Создавать новые концепции","Находить точки прорыва","Проектировать системы","Трансформировать системы","Стратегические решения","Видение будущего","Мыслительное лидерство","Вносить вклад","Видеть рычаги влияния"]
     };
+
+    document.querySelectorAll('input[name="role"]').forEach(r=>{
+      r.addEventListener('change',()=>{
+        const role=document.querySelector('input[name="role"]:checked')?.value;
+        optsBox.innerHTML='';
+        for(const t of (roleTexts[role]||[])){
+          const d=document.createElement('div'); d.className='opt'; d.textContent=t; d.dataset.value=t; optsBox.appendChild(d);
+        }
+        syncChips();
+      });
+    });
+    optsBox.addEventListener('click',e=>{ const card=e.target.closest('.opt'); if(!card) return; card.classList.toggle('selected'); syncChips(); });
+    function syncChips(){ chips.innerHTML=''; const sel=Array.from(optsBox.querySelectorAll('.opt.selected')).map(x=>x.dataset.value); for(const s of sel){ const c=document.createElement('span'); c.className='chip'; c.textContent=s; chips.appendChild(c); } }
+    function addOwn(){ const v=ownInput.value.trim(); if(!v) return; let ex=Array.from(optsBox.children).find(x=>x.dataset.value===v); if(!ex){ const d=document.createElement('div'); d.className='opt selected'; d.textContent=v; d.dataset.value=v; optsBox.prepend(d);} else { ex.classList.add('selected'); } ownInput.value=''; syncChips(); }
+    ownInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addOwn(); } });
+
+    function two(n){ return String(n).padStart(2,'0'); }
+    function mapIdFromNow(){ const d=new Date(); return `${two(d.getSeconds())}${two(d.getMinutes())}${two(d.getHours())}${two(d.getDate())}${two(d.getMonth()+1)}${two(d.getFullYear()%100)}`; }
+    const say=(m,c)=>{ status.textContent=m; status.style.color=c||'#333'; };
+
+    submit.addEventListener('click', async ()=>{
+      const role=document.querySelector('input[name="role"]:checked')?.value;
+      const subject=document.getElementById('subject').value.trim();
+      const chosen=Array.from(optsBox.querySelectorAll('.opt.selected')).map(x=>x.dataset.value);
+      if(!role){ say('Выберите роль.','crimson'); return; }
+      if(!subject){ say('Укажите тему.','crimson'); return; }
+      if(chosen.length===0){ say('Выберите хотя бы один вариант.','crimson'); return; }
+      const payload={
+        source:'sotiio_web_survey', map_id:mapIdFromNow(),
+        user_story:{ "I_as...":role, "Want_to_discover_a_universe...":subject, "So_that...":chosen, timestamp:(new Date()).toISOString() }
+      };
+      submit.disabled=true; say('Отправляем…');
+      try{
+        const resp=await fetch('https://n8n.sotiio.com/webhook/us',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        if(!resp.ok){ let t=''; try{ t=await resp.text(); }catch{}; throw new Error(`HTTP ${resp.status}${t? ' — '+t:''}`); }
+        let data; const ct=resp.headers.get('content-type')||'';
+        if(ct.includes('application/json')) data=await resp.json(); else { const raw=await resp.text(); try{ data=JSON.parse(raw); }catch{ throw new Error('Вебхук вернул не-JSON'); } }
+        if (window.parent && window.parent !== window) window.parent.postMessage({type:'map:set', payload:data}, '*');
+        say('Готово. Карта отправлена в index.','green');
+      }catch(err){ say('Ошибка: '+(err?.message||err),'crimson'); }
+      finally{ submit.disabled=false; }
+    });
   })();
   </script>
 </body>
