@@ -267,12 +267,12 @@
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner"></div>
       <div class="loading-text">Создаём вашу карту знаний...</div>
-      <div class="loading-details">Это может занять от 3 до 7 минут</div>
+      <div class="loading-details" id="loadingDetails">Это может занять от 3 до 7 минут</div>
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
       </div>
       <div class="timer" id="timer">Прошло: 0:00</div>
-      <div class="loading-details" id="loadingDetails">Инициализация процесса...</div>
+      <div class="loading-details" id="loadingDetails2">Инициализация процесса...</div>
     </div>
     
     <h1>Новое исследование</h1>
@@ -329,13 +329,15 @@
     const status = document.getElementById('status');
     const submit = document.getElementById('submit');
     const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingDetails = document.getElementById('loadingDetails');
+    const loadingDetails = document.getElementById('loadingDetails');   // верхняя строка
+    const loadingDetails2 = document.getElementById('loadingDetails2'); // нижняя строка (инициализация/ожидание)
     const progressFill = document.getElementById('progressFill');
     const timer = document.getElementById('timer');
 
     let currentMapId = null;
     let startTime = null;
     let timerInterval = null;
+    let showElapsedInDetails = false; // показывать прошедшее время в тексте статуса
 
     const roleTexts = {
       "Novice": [
@@ -477,7 +479,7 @@
       status.style.color = c || '#333';
     };
 
-    // Таймер
+    // Таймер + вывод прошедшего времени в статус
     function updateTimer() {
       if (!startTime) return;
       
@@ -485,15 +487,32 @@
       const diff = Math.floor((now - startTime) / 1000);
       const minutes = Math.floor(diff / 60);
       const seconds = diff % 60;
+      const mmss = `${minutes}:${two(seconds)}`;
+
+      timer.textContent = `Прошло: ${mmss}`;
       
-      timer.textContent = `Прошло: ${minutes}:${two(seconds)}`;
-      
-      // Обновляем прогресс-бар (максимум 10 минут)
+      // Прогресс-бар (макс 10 минут условно)
       const progress = Math.min((diff / 600) * 100, 100);
       progressFill.style.width = `${progress}%`;
+
+      if (showElapsedInDetails) {
+        loadingDetails2.textContent = `Ожидаем создание карты… (прошло ${mmss})`;
+      }
     }
 
-    // Отправка данных
+    // fetch с таймаутом (5 секунд) через AbortController
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        return res;
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    // Отправка данных - ОДИН ЗАПРОС С ТАЙМАУТОМ 5с
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
       const subject = document.getElementById('subject').value.trim();
@@ -551,99 +570,88 @@
       .catch((error) => {
         console.warn('Предупреждение при отправке:', error);
       })
-      .finally(() => {
-        // 2. Ждем 5 секунд и делаем запрос за картой
-        setTimeout(() => {
-          loadingDetails.textContent = 'Ожидаем создание карты...';
-          
-          // Запрос за картой
-          fetch('https://n8n.sotiio.com/webhook/getmap', {
+      .finally(async () => {
+        // 2. Сразу пытаемся получить карту (ОДИН запрос), показывая прошедшее время
+        showElapsedInDetails = true;
+        updateTimer();
+
+        try {
+          const response = await fetchWithTimeout('https://n8n.sotiio.com/webhook/getmap', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             },
             body: JSON.stringify({ map_id: currentMapId })
-          })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
+          }, 5000); // ТАЙМАУТ 5 СЕКУНД
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.text().then(text => {
+            try {
+              return text ? JSON.parse(text) : [];
+            } catch (e) {
+              console.error('Ошибка парсинга JSON:', e);
+              throw new Error('Невалидный JSON ответ от сервера');
             }
-            return response.text().then(text => {
-              try {
-                return text ? JSON.parse(text) : [];
-              } catch (e) {
-                console.error('Ошибка парсинга JSON:', e);
-                throw new Error('Невалидный JSON ответ от сервера');
-              }
-            });
-          })
-          .then(data => {
-            clearInterval(timerInterval);
-            
-            // Обрабатываем массив от n8n - берем первый элемент
-            let mapData = null;
-            
-            if (Array.isArray(data) && data.length > 0) {
-              // n8n возвращает массив, берем первый элемент
-              const firstItem = data[0];
-              
-              // Проверяем различные возможные структуры в первом элементе массива
-              if (firstItem && firstItem.map) {
-                mapData = firstItem.map;
-              } else if (firstItem && typeof firstItem === 'object') {
-                // Если весь первый элемент - это карта
-                mapData = firstItem;
-              } else if (firstItem && firstItem.data && firstItem.data.map) {
-                mapData = firstItem.data.map;
-              } else if (firstItem && firstItem.payload) {
-                mapData = firstItem.payload;
-              }
-            } else if (data && data.map) {
-              // Если ответ не массив, а объект с map
-              mapData = data.map;
-            } else if (data && typeof data === 'object') {
-              // Если ответ - это сам объект карты
-              mapData = data;
-            }
-            
-            if (mapData) {
-              // Сначала закрываем модальное окно
-              loadingOverlay.classList.remove('active');
-              
-              // Затем отправляем данные карты с небольшой задержкой
-              setTimeout(() => {
-                if (window.parent && window.parent !== window) {
-                  window.parent.postMessage({ 
-                    type: 'map:set', 
-                    payload: {
-                      map: mapData,
-                      rawResponse: data
-                    }
-                  }, '*');
-                }
-                
-                // Закрываем пользовательскую историю
-                setTimeout(() => {
-                  if (window.parent && window.parent.UI) {
-                    window.parent.UI.closeUserStory();
-                  }
-                }, 500);
-              }, 100);
-            } else {
-              console.warn('Неожиданная структура ответа:', data);
-              loadingOverlay.classList.remove('active');
-              say('Карта не была создана. Неожиданный формат ответа.', 'crimson');
-              submit.disabled = false;
-            }
-          })
-          .catch(error => {
-            clearInterval(timerInterval);
-            loadingOverlay.classList.remove('active');
-            say('Ошибка при получении карты: ' + error.message, 'crimson');
-            submit.disabled = false;
           });
-        }, 5000); // Ждем 5 секунд перед запросом карты
+
+          clearInterval(timerInterval);
+          loadingOverlay.classList.remove('active');
+          
+          // Обрабатываем массив от n8n - берём первый элемент
+          let mapData = null;
+          if (Array.isArray(data) && data.length > 0) {
+            const firstItem = data[0];
+            if (firstItem && firstItem.map) {
+              mapData = firstItem.map;
+            } else if (firstItem && typeof firstItem === 'object') {
+              mapData = firstItem;
+            } else if (firstItem && firstItem.data && firstItem.data.map) {
+              mapData = firstItem.data.map;
+            } else if (firstItem && firstItem.payload) {
+              mapData = firstItem.payload;
+            }
+          } else if (data && data.map) {
+            mapData = data.map;
+          } else if (data && typeof data === 'object') {
+            mapData = data;
+          }
+          
+          if (mapData) {
+            console.log('Получены данные карты:', mapData);
+
+            // СНАЧАЛА закрываем модалку
+            if (window.parent && window.parent !== window && window.parent.UI && typeof window.parent.UI.closeUserStory === 'function') {
+              window.parent.UI.closeUserStory();
+            }
+            // Затем — небольшая задержка и визуализация карты
+            setTimeout(() => {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ 
+                  type: 'map:set', 
+                  payload: {
+                    map: mapData,
+                    rawResponse: data
+                  }
+                }, '*');
+              }
+            }, 350);
+
+          } else {
+            console.warn('Неожиданная структура ответа:', data);
+            say('Карта не была создана. Неожиданный формат ответа.', 'crimson');
+            submit.disabled = false;
+          }
+        } catch (error) {
+          clearInterval(timerInterval);
+          loadingOverlay.classList.remove('active');
+          const msg = (error && error.name === 'AbortError') ? 'Таймаут запроса карты (5 сек).' : ('Ошибка при получении карты: ' + error.message);
+          say(msg, 'crimson');
+          submit.disabled = false;
+        }
       });
     });
 
