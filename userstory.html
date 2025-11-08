@@ -160,7 +160,6 @@
       color: #666;
     }
     
-    /* Разделители */
     .divider {
       height: 1px;
       background: rgba(0,0,0,0.05);
@@ -169,7 +168,6 @@
       width: 100%;
     }
     
-    /* Стили для индикатора загрузки */
     .loading-overlay {
       position: absolute;
       top: 0;
@@ -267,17 +265,16 @@
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner"></div>
       <div class="loading-text">Создаём вашу карту знаний...</div>
-      <div class="loading-details" id="loadingDetails">Это может занять от 3 до 7 минут</div>
+      <div class="loading-details">Это может занять от 3 до 7 минут</div>
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
       </div>
       <div class="timer" id="timer">Прошло: 0:00</div>
-      <div class="loading-details" id="loadingDetails2">Инициализация процесса...</div>
+      <div class="loading-details" id="loadingDetails">Инициализация процесса...</div>
     </div>
     
     <h1>Новое исследование</h1>
     
-    <!-- Блок 1: выбор роли -->
     <div class="row">
       <div class="label">Я как…</div>
       <div class="roles">
@@ -290,7 +287,6 @@
 
     <div class="divider"></div>
 
-    <!-- Блок 2: тема/вселенная -->
     <div class="row">
       <div class="label">Хочу изучить…</div>
       <input id="subject" class="text-input" 
@@ -300,17 +296,13 @@
 
     <div class="divider"></div>
 
-    <!-- Блок 3: «Чтобы…» -->
     <div class="row">
       <div class="label">Чтобы…</div>
-      
       <div id="opts" class="options-grid"></div>
-      
       <div class="add-own">
         <input id="own" class="text-input" placeholder="Предложите свой вариант и нажмите Enter">
         <button class="add-btn" id="addOwn" title="Добавить">＋</button>
       </div>
-      
       <div id="chips" class="chiplist"></div>
     </div>
 
@@ -329,15 +321,14 @@
     const status = document.getElementById('status');
     const submit = document.getElementById('submit');
     const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingDetails = document.getElementById('loadingDetails');   // верхняя строка
-    const loadingDetails2 = document.getElementById('loadingDetails2'); // нижняя строка (инициализация/ожидание)
+    const loadingDetails = document.getElementById('loadingDetails');
     const progressFill = document.getElementById('progressFill');
     const timer = document.getElementById('timer');
 
     let currentMapId = null;
     let startTime = null;
     let timerInterval = null;
-    let showElapsedInDetails = false; // показывать прошедшее время в тексте статуса
+    let showElapsedInDetails = false; // только для текста статуса, структура не меняется
 
     const roleTexts = {
       "Novice": [
@@ -390,13 +381,11 @@
       ]
     };
 
-    // Реакция на выбор роли
     document.querySelectorAll('input[name="role"]').forEach(r=>{
       r.addEventListener('change', ()=>{
         const role = document.querySelector('input[name="role"]:checked')?.value;
         optsBox.innerHTML = '';
         const list = roleTexts[role] || [];
-        
         for(const v of list){
           const div = document.createElement('div');
           div.className = 'option-card';
@@ -404,12 +393,10 @@
           div.dataset.value = v;
           optsBox.appendChild(div);
         }
-        
         syncChips();
       });
     });
 
-    // Переключение выбора карточки
     optsBox.addEventListener('click', e=>{
       const card = e.target.closest('.option-card');
       if(!card) return;
@@ -417,12 +404,10 @@
       syncChips();
     });
 
-    // Отрисовка чипов выбранных пунктов
     function syncChips(){
       chips.innerHTML = '';
       const selected = Array.from(optsBox.querySelectorAll('.option-card.selected'))
                           .map(x => x.dataset.value);
-      
       for(const s of selected){
         const c = document.createElement('span');
         c.className = 'chip';
@@ -431,11 +416,9 @@
       }
     }
 
-    // Добавление собственного варианта
     function addOwn(){
       const val = ownInput.value.trim();
       if(!val) return;
-      
       let existing = Array.from(optsBox.children).find(x => x.dataset.value === val);
       if(!existing){
         const div = document.createElement('div');
@@ -446,23 +429,18 @@
       } else {
         existing.classList.add('selected');
       }
-      
       ownInput.value = '';
       syncChips();
     }
-    
     ownInput.addEventListener('keydown', e=>{
       if(e.key === 'Enter'){
         e.preventDefault();
         addOwn();
       }
     });
-    
     addOwnBtn.addEventListener('click', addOwn);
 
-    // Helpers
     function two(n){ return String(n).padStart(2,'0'); }
-    
     function mapIdFromNow(){
       const d = new Date();
       const ss = two(d.getSeconds());
@@ -473,66 +451,48 @@
       const yy = two(d.getFullYear()%100);
       return `${ss}${mm}${hh}${dd}${MM}${yy}`;
     }
-    
     const say = (m, c) => {
       status.textContent = m;
       status.style.color = c || '#333';
     };
 
-    // Таймер + вывод прошедшего времени в статус
+    // таймер + прогресс; добавил вывод elapsed в loadingDetails по флагу
     function updateTimer() {
       if (!startTime) return;
-      
       const now = new Date();
       const diff = Math.floor((now - startTime) / 1000);
       const minutes = Math.floor(diff / 60);
       const seconds = diff % 60;
       const mmss = `${minutes}:${two(seconds)}`;
-
       timer.textContent = `Прошло: ${mmss}`;
-      
-      // Прогресс-бар (макс 10 минут условно)
       const progress = Math.min((diff / 600) * 100, 100);
       progressFill.style.width = `${progress}%`;
-
       if (showElapsedInDetails) {
-        loadingDetails2.textContent = `Ожидаем создание карты… (прошло ${mmss})`;
+        loadingDetails.textContent = `Ожидаем создание карты… (прошло ${mmss})`;
       }
     }
 
-    // fetch с таймаутом (5 секунд) через AbortController
+    // fetch с таймаутом 5с
     async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        return res;
+        return await fetch(url, { ...options, signal: controller.signal });
       } finally {
         clearTimeout(id);
       }
     }
 
-    // Отправка данных - ОДИН ЗАПРОС С ТАЙМАУТОМ 5с
+    // ОТПРАВКА
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
       const subject = document.getElementById('subject').value.trim();
       const chosen = Array.from(optsBox.querySelectorAll('.option-card.selected'))
                          .map(x => x.dataset.value);
 
-      if(!role){
-        say('Выберите роль.', 'crimson');
-        return;
-      }
-      
-      if(!subject){
-        say('Укажите тему/вселенную.', 'crimson');
-        return;
-      }
-      
-      if(chosen.length === 0){
-        say('Выберите хотя бы один вариант в «Чтобы…» или добавьте свой.', 'crimson');
-        return;
-      }
+      if(!role){ say('Выберите роль.', 'crimson'); return; }
+      if(!subject){ say('Укажите тему/вселенную.', 'crimson'); return; }
+      if(chosen.length === 0){ say('Выберите хотя бы один вариант в «Чтобы…» или добавьте свой.', 'crimson'); return; }
 
       currentMapId = mapIdFromNow();
       startTime = new Date();
@@ -540,12 +500,10 @@
       submit.disabled = true;
       loadingOverlay.classList.add('active');
       say('');
-      
-      // Запускаем таймер
+
       timerInterval = setInterval(updateTimer, 1000);
       updateTimer();
 
-      // Создаем payload
       const payload = {
         source: 'sotiio_web_survey',
         map_id: currentMapId,
@@ -557,7 +515,7 @@
         }
       };
 
-      // 1. Отправляем запрос на создание карты (без ожидания ответа)
+      // 1. создание карты (как было)
       fetch('https://n8n.sotiio.com/webhook/us', {
         method: 'POST',
         mode: 'no-cors',
@@ -571,7 +529,7 @@
         console.warn('Предупреждение при отправке:', error);
       })
       .finally(async () => {
-        // 2. Сразу пытаемся получить карту (ОДИН запрос), показывая прошедшее время
+        // 2. БЕЗ задержки в 10с — сразу один запрос за картой с таймаутом 5с
         showElapsedInDetails = true;
         updateTimer();
 
@@ -583,62 +541,51 @@
               'Accept': 'application/json'
             },
             body: JSON.stringify({ map_id: currentMapId })
-          }, 5000); // ТАЙМАУТ 5 СЕКУНД
+          }, 5000);
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
           const data = await response.text().then(text => {
-            try {
-              return text ? JSON.parse(text) : [];
-            } catch (e) {
-              console.error('Ошибка парсинга JSON:', e);
-              throw new Error('Невалидный JSON ответ от сервера');
-            }
+            try { return text ? JSON.parse(text) : []; }
+            catch { throw new Error('Невалидный JSON ответ от сервера'); }
           });
 
           clearInterval(timerInterval);
           loadingOverlay.classList.remove('active');
-          
-          // Обрабатываем массив от n8n - берём первый элемент
+
+          // разбор структуры — как в исходнике
           let mapData = null;
           if (Array.isArray(data) && data.length > 0) {
             const firstItem = data[0];
-            if (firstItem && firstItem.map) {
-              mapData = firstItem.map;
-            } else if (firstItem && typeof firstItem === 'object') {
-              mapData = firstItem;
-            } else if (firstItem && firstItem.data && firstItem.data.map) {
-              mapData = firstItem.data.map;
-            } else if (firstItem && firstItem.payload) {
-              mapData = firstItem.payload;
-            }
+            if (firstItem && firstItem.map) mapData = firstItem.map;
+            else if (firstItem && typeof firstItem === 'object') mapData = firstItem;
+            else if (firstItem && firstItem.data && firstItem.data.map) mapData = firstItem.data.map;
+            else if (firstItem && firstItem.payload) mapData = firstItem.payload;
           } else if (data && data.map) {
             mapData = data.map;
           } else if (data && typeof data === 'object') {
             mapData = data;
           }
-          
+
           if (mapData) {
             console.log('Получены данные карты:', mapData);
 
-            // СНАЧАЛА закрываем модалку
-            if (window.parent && window.parent !== window && window.parent.UI && typeof window.parent.UI.closeUserStory === 'function') {
-              window.parent.UI.closeUserStory();
+            // ВОЗВРАЩАЮ исходный порядок: СНАЧАЛА отрисовка (postMessage)…
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ 
+                type: 'map:set', 
+                payload: {
+                  map: mapData,
+                  rawResponse: data
+                }
+              }, '*');
             }
-            // Затем — небольшая задержка и визуализация карты
+            // …ПОТОМ закрытие модалки (как было)
             setTimeout(() => {
-              if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ 
-                  type: 'map:set', 
-                  payload: {
-                    map: mapData,
-                    rawResponse: data
-                  }
-                }, '*');
+              if (window.parent && window.parent.UI) {
+                window.parent.UI.closeUserStory();
               }
-            }, 350);
+            }, 1000);
 
           } else {
             console.warn('Неожиданная структура ответа:', data);
@@ -648,18 +595,17 @@
         } catch (error) {
           clearInterval(timerInterval);
           loadingOverlay.classList.remove('active');
-          const msg = (error && error.name === 'AbortError') ? 'Таймаут запроса карты (5 сек).' : ('Ошибка при получении карты: ' + error.message);
+          const msg = (error && error.name === 'AbortError')
+            ? 'Таймаут запроса карты (5 сек).'
+            : 'Ошибка при получении карты: ' + error.message;
           say(msg, 'crimson');
           submit.disabled = false;
         }
       });
     });
 
-    // Очистка при закрытии
     window.addEventListener('beforeunload', () => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-      }
+      if (timerInterval) clearInterval(timerInterval);
     });
   })();
   </script>
