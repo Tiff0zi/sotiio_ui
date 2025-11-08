@@ -493,60 +493,7 @@
       progressFill.style.width = `${progress}%`;
     }
 
-    // Универсальная функция для извлечения данных карты из различных форматов n8n
-    function extractMapData(responseData) {
-      console.log('Получен ответ от сервера:', responseData);
-      
-      // Если ответ - массив (самый частый случай от n8n)
-      if (Array.isArray(responseData)) {
-        if (responseData.length === 0) {
-          throw new Error('Пустой массив в ответе');
-        }
-        
-        // Ищем данные карты в первом элементе массива
-        const firstItem = responseData[0];
-        
-        // Различные возможные структуры от n8n
-        if (firstItem && firstItem.map) {
-          return firstItem.map;
-        } else if (firstItem && firstItem.data && firstItem.data.map) {
-          return firstItem.data.map;
-        } else if (firstItem && firstItem.payload) {
-          return firstItem.payload;
-        } else if (firstItem && typeof firstItem === 'object') {
-          // Если весь первый элемент - это карта
-          return firstItem;
-        } else if (typeof firstItem === 'string') {
-          // Если это JSON строка
-          try {
-            const parsed = JSON.parse(firstItem);
-            return extractMapData(parsed); // Рекурсивно обрабатываем
-          } catch (e) {
-            console.warn('Не удалось распарсить строку:', e);
-          }
-        }
-      }
-      
-      // Если ответ - объект (не массив)
-      if (responseData && typeof responseData === 'object') {
-        if (responseData.map) {
-          return responseData.map;
-        } else if (responseData.data && responseData.data.map) {
-          return responseData.data.map;
-        } else if (responseData.payload) {
-          return responseData.payload;
-        } else {
-          // Если весь объект - это карта
-          return responseData;
-        }
-      }
-      
-      // Если ничего не подошло
-      console.warn('Не удалось извлечь данные карты из ответа:', responseData);
-      return null;
-    }
-
-    // Отправка данных
+    // Отправка данных - ОДИН ЗАПРОС БЕЗ ТАЙМАУТА
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
       const subject = document.getElementById('subject').value.trim();
@@ -591,81 +538,109 @@
         }
       };
 
-      try {
-        // 1. Отправляем запрос на создание карты
-        loadingDetails.textContent = 'Отправляем запрос на создание карты...';
-        
-        await fetch('https://n8n.sotiio.com/webhook/us', {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        loadingDetails.textContent = 'Запрос отправлен. Ожидаем создание карты...';
-        
-        // 2. Ждем 10 секунд и запрашиваем карту
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        
-        loadingDetails.textContent = 'Получаем данные карты...';
-        
-        // 3. Запрашиваем карту
-        const response = await fetch('https://n8n.sotiio.com/webhook/getmap', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ map_id: currentMapId })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ошибка: ${response.status}`);
-        }
-
-        const responseData = await response.json();
-        const mapData = extractMapData(responseData);
-
-        if (!mapData) {
-          throw new Error('Не удалось извлечь данные карты из ответа сервера');
-        }
-
-        // Успешно получили карту
-        clearInterval(timerInterval);
-        loadingOverlay.classList.remove('active');
-        
-        console.log('Успешно получены данные карты:', mapData);
-        
-        // Передаем данные карты родительскому окну
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ 
-            type: 'map:set', 
-            payload: {
-              map: mapData,
-              mapId: currentMapId,
-              rawResponse: responseData // Для отладки
-            }
-          }, '*');
-        }
-        
-        // Закрываем окно через секунду
+      // 1. Отправляем запрос на создание карты (без ожидания ответа)
+      fetch('https://n8n.sotiio.com/webhook/us', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        loadingDetails.textContent = 'Запрос на создание карты отправлен...';
+      })
+      .catch((error) => {
+        console.warn('Предупреждение при отправке:', error);
+      })
+      .finally(() => {
+        // 2. Ждем 10 секунд и делаем ОДИН запрос за картой
         setTimeout(() => {
-          if (window.parent && window.parent.UI) {
-            window.parent.UI.closeUserStory();
-          }
-        }, 1000);
-        
-      } catch (error) {
-        // Обработка ошибок
-        clearInterval(timerInterval);
-        loadingOverlay.classList.remove('active');
-        
-        console.error('Ошибка:', error);
-        say('Ошибка: ' + error.message, 'crimson');
-        submit.disabled = false;
-        
-        loadingDetails.textContent = `Ошибка: ${error.message}`;
-      }
+          loadingDetails.textContent = 'Ожидаем создание карты...';
+          
+          // ОДИН запрос без таймаута - ждем пока сервер ответит
+          fetch('https://n8n.sotiio.com/webhook/getmap', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ map_id: currentMapId })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            return response.text().then(text => {
+              try {
+                return text ? JSON.parse(text) : [];
+              } catch (e) {
+                console.error('Ошибка парсинга JSON:', e);
+                throw new Error('Невалидный JSON ответ от сервера');
+              }
+            });
+          })
+          .then(data => {
+            clearInterval(timerInterval);
+            loadingOverlay.classList.remove('active');
+            
+            // Обрабатываем массив от n8n - берем первый элемент
+            let mapData = null;
+            
+            if (Array.isArray(data) && data.length > 0) {
+              // n8n возвращает массив, берем первый элемент
+              const firstItem = data[0];
+              
+              // Проверяем различные возможные структуры в первом элементе массива
+              if (firstItem && firstItem.map) {
+                mapData = firstItem.map;
+              } else if (firstItem && typeof firstItem === 'object') {
+                // Если весь первый элемент - это карта
+                mapData = firstItem;
+              } else if (firstItem && firstItem.data && firstItem.data.map) {
+                mapData = firstItem.data.map;
+              } else if (firstItem && firstItem.payload) {
+                mapData = firstItem.payload;
+              }
+            } else if (data && data.map) {
+              // Если ответ не массив, а объект с map
+              mapData = data.map;
+            } else if (data && typeof data === 'object') {
+              // Если ответ - это сам объект карты
+              mapData = data;
+            }
+            
+            if (mapData) {
+              // Карта найдена!
+              console.log('Получены данные карты:', mapData);
+              
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ 
+                  type: 'map:set', 
+                  payload: {
+                    map: mapData,
+                    rawResponse: data // Отправляем также полный ответ для отладки
+                  }
+                }, '*');
+              }
+              
+              setTimeout(() => {
+                if (window.parent && window.parent.UI) {
+                  window.parent.UI.closeUserStory();
+                }
+              }, 1000);
+            } else {
+              console.warn('Неожиданная структура ответа:', data);
+              say('Карта не была создана. Неожиданный формат ответа.', 'crimson');
+              submit.disabled = false;
+            }
+          })
+          .catch(error => {
+            clearInterval(timerInterval);
+            loadingOverlay.classList.remove('active');
+            say('Ошибка при получении карты: ' + error.message, 'crimson');
+            submit.disabled = false;
+          });
+        }, 10000); // Ждем 10 секунд перед запросом карты
+      });
     });
 
     // Очистка при закрытии
