@@ -471,6 +471,61 @@
       const yy = two(d.getFullYear()%100);
       return `${ss}${mm}${hh}${dd}${MM}${yy}`;
     }
+
+    // === КОНВЕРТЕР В node_tree (ДОБАВЛЕНО) ===
+    function toNodeTree(maybe){
+      try{
+        if (!maybe) return maybe;
+
+        // Уже node_tree
+        if (maybe.format === 'node_tree' && maybe.data) return maybe;
+
+        // Если пришло { map: ... } — разворачиваем
+        const core = (maybe && maybe.map) ? maybe.map : maybe;
+
+        const looksLike = (n) => n && (n.label || n.topic) && (n.node_id || n.id);
+
+        function mapNode(n){
+          if (!n || typeof n !== 'object') return null;
+
+          const out = {
+            id: String(n.node_id ?? n.id ?? ''),
+            topic: String(n.label ?? n.topic ?? '')
+          };
+
+          // Всё лишнее переносим в node.data
+          const { label, node_id, topic, children, ...rest } = n;
+          const dataPack = {
+            data: {
+              node_id: node_id ?? n.id,
+              label:   label   ?? topic ?? '',
+              ...(rest || {})
+            }
+          };
+
+          if (Array.isArray(children)) {
+            const kids = children.map(mapNode).filter(Boolean);
+            if (kids.length) out.children = kids;
+          }
+
+          return Object.assign(out, dataPack);
+        }
+
+        if (looksLike(core)) return { format:'node_tree', data: mapNode(core) };
+
+        // Массив вариантов: берём первый подходящий
+        if (Array.isArray(core)) {
+          for (const it of core) {
+            const v = it?.map ?? it;
+            if (v && v.format === 'node_tree' && v.data) return v;
+            if (looksLike(v)) return { format:'node_tree', data: mapNode(v) };
+          }
+        }
+      }catch(e){
+        console.warn('toNodeTree failed:', e);
+      }
+      return maybe;
+    }
     
     const say = (m, c) => {
       status.textContent = m;
@@ -613,12 +668,15 @@
               console.log('Получены данные карты:', mapData);
               
               if (window.parent && window.parent !== window) {
+                // === ИЗМЕНЕНО: конвертируем в node_tree и отправляем его ===
+                const nodeTree = toNodeTree(mapData);
+                if (!(nodeTree && nodeTree.format === 'node_tree' && nodeTree.data)) {
+                  console.warn('mapData не конвертируется в node_tree, отправляю как есть для совместимости');
+                }
                 window.parent.postMessage({ 
                   type: 'map:set', 
-                  payload: {
-                    map: mapData,
-                    rawResponse: data // Отправляем также полный ответ для отладки
-                  }
+                  payload: nodeTree || { map: mapData }
+                  // при желании можно добавить: , rawResponse: data
                 }, '*');
               }
               
