@@ -182,6 +182,7 @@
       ]
     };
 
+    // Реакция на выбор роли
     document.querySelectorAll('input[name="role"]').forEach(r=>{
       r.addEventListener('change', ()=>{
         const role = document.querySelector('input[name="role"]:checked')?.value;
@@ -198,6 +199,7 @@
       });
     });
 
+    // Переключение выбора карточки
     optsBox.addEventListener('click', e=>{
       const card = e.target.closest('.option-card');
       if(!card) return;
@@ -205,6 +207,7 @@
       syncChips();
     });
 
+    // Отрисовка чипов выбранных пунктов
     function syncChips(){
       chips.innerHTML = '';
       const selected = Array.from(optsBox.querySelectorAll('.option-card.selected')).map(x => x.dataset.value);
@@ -216,6 +219,7 @@
       }
     }
 
+    // Добавление собственного варианта
     function addOwn(){
       const val = ownInput.value.trim();
       if(!val) return;
@@ -237,6 +241,7 @@
     });
     addOwnBtn.addEventListener('click', addOwn);
 
+    // Helpers
     function two(n){ return String(n).padStart(2,'0'); }
     function mapIdFromNow(){
       const d = new Date();
@@ -247,6 +252,7 @@
 
     const say = (m, c) => { status.textContent = m; status.style.color = c || '#333'; };
 
+    // Таймер
     function updateTimer() {
       if (!startTime) return;
       const now = new Date();
@@ -258,6 +264,7 @@
       progressFill.style.width = `${progress}%`;
     }
 
+    // Отправка данных
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
       const subject = document.getElementById('subject').value.trim();
@@ -269,12 +276,14 @@
 
       currentMapId = mapIdFromNow();
       startTime = new Date();
+
       submit.disabled = true;
       loadingOverlay.classList.add('active');
       say('');
       timerInterval = setInterval(updateTimer, 1000);
       updateTimer();
 
+      // 1. Отправляем запрос на создание карты (без ожидания ответа)
       const payload = {
         source: 'sotiio_web_survey',
         map_id: currentMapId,
@@ -286,29 +295,37 @@
         }
       };
 
-      // 1) запускаем создание
       fetch('https://n8n.sotiio.com/webhook/us', {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      .then(()=>{ loadingDetails.textContent = 'Запрос на создание карты отправлен...'; })
-      .catch(err=>{ console.warn('Предупреждение при отправке:', err); })
-      .finally(()=>{
-        // 2) ждём 10 секунд и забираем ГОТОВЫЙ node_tree
-        setTimeout(()=>{
-          loadingDetails.textContent = 'Ожидаем создание карты...';
+      .then(() => {
+        loadingDetails.textContent = 'Запрос на создание карты отправлен...';
+      })
+      .catch((error) => {
+        console.warn('Предупреждение при отправке:', error);
+      })
+      .finally(() => {
+        // 2. Ждём 5 секунд и делаем один запрос за картой
+        setTimeout(() => {
+          const secondsPassed = Math.floor((new Date() - startTime) / 1000);
+          loadingDetails.textContent = `Прошло ${secondsPassed} сек. — получаем карту...`;
+
           fetch('https://n8n.sotiio.com/webhook/getmap', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ map_id: currentMapId })
           })
-          .then(resp=>{
-            if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.text().then(t=>{ try{ return t ? JSON.parse(t) : []; } catch(e){ throw new Error('Невалидный JSON ответ от сервера'); }});
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.text().then(text => {
+              try { return text ? JSON.parse(text) : []; }
+              catch { throw new Error('Невалидный JSON ответ от сервера'); }
+            });
           })
-          .then(data=>{
+          .then(data => {
             clearInterval(timerInterval);
             loadingOverlay.classList.remove('active');
 
@@ -317,26 +334,37 @@
 
             if (nodeTree && nodeTree.format === 'node_tree' && nodeTree.data) {
               if (window.parent && window.parent !== window) {
-                window.parent.postMessage({ type: 'map:set', payload: nodeTree }, '*');
+                // Сначала закрываем модалку, затем отдаём карту (плавнее)
+                if (window.parent.UI && typeof window.parent.UI.closeUserStory === 'function') {
+                  window.parent.UI.closeUserStory();
+                  setTimeout(() => {
+                    window.parent.postMessage({ type: 'map:set', payload: nodeTree }, '*');
+                  }, 400); // задержка на закрытие модалки
+                } else {
+                  // fallback
+                  window.parent.postMessage({ type: 'map:set', payload: nodeTree }, '*');
+                }
               }
-              setTimeout(()=>{ if (window.parent && window.parent.UI) window.parent.UI.closeUserStory(); }, 1000);
             } else {
               console.warn('Неожиданная структура ответа:', data);
               say('Карта не была создана. Неожиданный формат ответа.', 'crimson');
               submit.disabled = false;
             }
           })
-          .catch(error=>{
+          .catch(error => {
             clearInterval(timerInterval);
             loadingOverlay.classList.remove('active');
             say('Ошибка при получении карты: ' + error.message, 'crimson');
             submit.disabled = false;
           });
-        }, 10000);
+        }, 5000); // ← 5 секунд вместо 10
       });
     });
 
-    window.addEventListener('beforeunload', ()=>{ if (timerInterval) clearInterval(timerInterval); });
+    // Очистка при закрытии
+    window.addEventListener('beforeunload', () => {
+      if (timerInterval) clearInterval(timerInterval);
+    });
   })();
   </script>
 </body>
