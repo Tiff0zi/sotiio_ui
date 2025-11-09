@@ -63,6 +63,31 @@
       h1 { font-size: 20px; }
       .progress-bar { width: 250px; }
     }
+
+    /* ——— Добавлено: верхняя панель с переключателем языка ——— */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px;
+    }
+    .lang-control {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #333;
+    }
+    .lang-control .switch {
+      position: relative; display: inline-block; width: 44px; height: 22px;
+    }
+    .lang-control .switch input { display:none; }
+    .lang-control .slider {
+      position: absolute; cursor: pointer; inset: 0; background:#ddd; transition:.2s; border-radius: 22px;
+    }
+    .lang-control .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background: #fff; transition:.2s; border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .lang-control input:checked + .slider { background:#ff622b; }
+    .lang-control input:checked + .slider:before { transform: translateX(22px); }
+    .lang-select {
+      padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-family: inherit;
+    }
+    .lang-help { color:#666; font-size:12px; }
   </style>
 </head>
 <body>
@@ -76,7 +101,32 @@
       <div class="loading-details" id="loadingDetails">Инициализация процесса...</div>
     </div>
 
-    <h1>Новое исследование</h1>
+    <!-- ——— ЗАГОЛОВОК + ПЕРЕКЛЮЧАТЕЛЬ ——— -->
+    <div class="topbar">
+      <h1>Новое исследование</h1>
+      <div class="lang-control" title="Язык для ответа">
+        <span class="lang-help">Auto</span>
+        <label class="switch">
+          <input type="checkbox" id="langAuto" checked>
+          <span class="slider"></span>
+        </label>
+        <select id="langSelect" class="lang-select" disabled>
+          <option value="ru">Русский (ru)</option>
+          <option value="en">English (en)</option>
+          <option value="es">Español (es)</option>
+          <option value="de">Deutsch (de)</option>
+          <option value="fr">Français (fr)</option>
+          <option value="pt">Português (pt)</option>
+          <option value="it">Italiano (it)</option>
+          <option value="uk">Українська (uk)</option>
+          <option value="pl">Polski (pl)</option>
+          <option value="tr">Türkçe (tr)</option>
+          <option value="zh">中文 (zh)</option>
+          <option value="ja">日本語 (ja)</option>
+          <option value="ko">한국어 (ko)</option>
+        </select>
+      </div>
+    </div>
 
     <div class="row">
       <div class="label">Я как…</div>
@@ -126,6 +176,10 @@
     const loadingDetails = document.getElementById('loadingDetails');
     const progressFill = document.getElementById('progressFill');
     const timer = document.getElementById('timer');
+
+    // ——— язык
+    const langAuto = document.getElementById('langAuto');
+    const langSelect = document.getElementById('langSelect');
 
     let currentMapId = null;
     let startTime = null;
@@ -264,6 +318,80 @@
       progressFill.style.width = `${progress}%`;
     }
 
+    // ——— ЯЗЫК: авто / ручной ———
+    function normalizeLangTag(tag){
+      if(!tag) return 'en';
+      // "ru-RU" -> "ru", "pt-BR" -> "pt"
+      return String(tag).toLowerCase().split(/[-_]/)[0];
+    }
+
+    function guessFromCountry(cc){
+      if(!cc) return null;
+      const m = {
+        RU:'ru', BY:'ru', KZ:'ru', KG:'ru', UA:'uk',
+        US:'en', GB:'en', AU:'en', NZ:'en', CA:'en',
+        DE:'de', FR:'fr', IT:'it', ES:'es', PT:'pt', BR:'pt',
+        TR:'tr', PL:'pl', CN:'zh', TW:'zh', HK:'zh', JP:'ja', KR:'ko'
+      };
+      return m[String(cc).toUpperCase()] || null;
+    }
+
+    function withTimeout(promise, ms){
+      let t; const timeout = new Promise((_,rej)=> t=setTimeout(()=>rej(new Error('timeout')), ms));
+      return Promise.race([promise.finally(()=>clearTimeout(t)), timeout]);
+    }
+
+    async function detectLanguageAuto(){
+      try {
+        // 1) попытка по IP
+        const resp = await withTimeout(fetch('https://ipapi.co/json/', {cache:'no-store'}), 2000);
+        if(resp.ok){
+          const j = await resp.json();
+          // ipapi.co может вернуть "languages": "ru,en" или country_code
+          const byLangs = Array.isArray(j.languages) ? j.languages[0] : (j.languages || '').split(',')[0];
+          const ipLang = normalizeLangTag(byLangs);
+          const ccLang = guessFromCountry(j.country || j.country_code);
+          const chosen = ipLang || ccLang;
+          if(chosen) return chosen;
+        }
+      } catch(_) { /* ignore */ }
+
+      // 2) фолбэк: язык браузера
+      return normalizeLangTag(navigator.language || (navigator.languages || [])[0] || 'en');
+    }
+
+    function getLanguageReply(){
+      if(langAuto.checked){
+        // авто-значение хранится в data-auto-lang, если определили; иначе берём браузер
+        const auto = langSelect.dataset.autoLang;
+        return normalizeLangTag(auto || navigator.language || 'en');
+      }
+      return langSelect.value || 'en';
+    }
+
+    // Инициализация языка: авто включен, селект заблокирован
+    langAuto.addEventListener('change', async ()=>{
+      const isAuto = langAuto.checked;
+      langSelect.disabled = isAuto;
+      if(isAuto){
+        const lang = await detectLanguageAuto();
+        langSelect.dataset.autoLang = lang;
+        // визуально подсветим предполагаемый
+        // если он в списке — выставим; иначе оставим текущее
+        const opt = Array.from(langSelect.options).find(o => o.value === lang);
+        if(opt) langSelect.value = lang;
+      }
+    });
+
+    // Первичный автодетект при загрузке
+    (async () => {
+      const lang = await detectLanguageAuto();
+      langSelect.dataset.autoLang = lang;
+      const opt = Array.from(langSelect.options).find(o => o.value === lang);
+      if(opt) langSelect.value = lang;
+      langSelect.disabled = true;
+    })();
+
     // Отправка данных
     submit.addEventListener('click', async ()=>{
       const role = document.querySelector('input[name="role"]:checked')?.value;
@@ -292,7 +420,9 @@
           "Want_to_discover_a_universe...": subject,
           "So_that...": chosen,
           timestamp: (new Date()).toISOString()
-        }
+        },
+        // ——— ДОБАВЛЕНО: язык ответа
+        language_reply: getLanguageReply()
       };
 
       fetch('https://n8n.sotiio.com/webhook/us', {
