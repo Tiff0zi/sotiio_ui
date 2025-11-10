@@ -1,23 +1,33 @@
-<script src="./PixiJS/pixi.min.js?v=3"></script>
-<script>
-(async function () {
-  const show = (t, err=false) => {
-    let m = document.getElementById('__msg'); 
-    if (!m) { 
-      m = document.createElement('div'); 
-      m.id='__msg'; 
-      m.style.cssText='position:fixed;left:10px;top:10px;color:#fff;font:14px system-ui;z-index:9999';
-      document.body.appendChild(m);
-    }
-    m.style.color = err ? '#ff6b6b' : '#ffffff';
-    m.textContent = t;
-    (err?console.error:console.log)(t);
-  };
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Pixi sanity check (v7/v8)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; background:#202020; overflow:hidden; }
+    #app { width:100vw; height:100vh; }
+    #msg { position:fixed; left:10px; top:10px; color:#fff; font:14px system-ui; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="msg">init…</div>
 
-  try {
-    if (!window.PIXI) { show('PIXI не загрузился: ./PixiJS/pixi.min.js', true); return; }
+  <!-- ВАЖНО: путь к твоему файлу -->
+  <script src="./PixiJS/pixi.min.js?v=2"></script>
 
-    // Создание приложения (v8 init / v7 opts)
+  <script>
+  (async function () {
+    const log = (t, err=false) => {
+      const el = document.getElementById('msg'); el.textContent = t; el.style.color = err ? '#ff6b6b' : '#ffffff';
+      console[err ? 'error' : 'log'](t);
+    };
+
+    if (!window.PIXI) { log('PIXI не загрузился: проверь путь ./PixiJS/pixi.min.js', true); return; }
+
+    // Создаём приложение: v8 -> new PIXI.Application(); await init(...)
+    //                     v7 -> new PIXI.Application(opts)
     let app;
     try {
       app = new PIXI.Application();
@@ -26,90 +36,100 @@
       } else {
         app = new PIXI.Application({ backgroundColor: 0x202020, antialias: true, resizeTo: window }); // v7
       }
-    } catch {
+    } catch (e) {
+      // если new PIXI.Application() требует opts (старый v7)
       app = new PIXI.Application({ backgroundColor: 0x202020, antialias: true, resizeTo: window });
     }
-    document.body.appendChild(app.canvas || app.view);
 
-    // Функции совместимости для v8/v7
-    const G = () => new PIXI.Graphics();
-    const fillRect = (g, x,y,w,h, color) => {
-      if (typeof g.rect === 'function') { g.rect(x,y,w,h).fill({ color }); }           // v8
-      else { g.beginFill(color); g.drawRect(x,y,w,h); g.endFill(); }                   // v7
-    };
-    const fillPoly = (g, pts, color, alpha=0.75) => {
-      if (typeof g.poly === 'function') { g.poly(pts, true).fill({ color, alpha }); }  // v8
-      else { g.beginFill(color, alpha); g.drawPolygon(pts); g.endFill(); }             // v7
-    };
-    const stroke1 = (g, color=0xffffff, alpha=0.3, width=1) => {
-      if (typeof g.stroke === 'function') { g.stroke({ color, width, alpha }); }       // v8
-      else { g.lineStyle(width, color, alpha); }                                       // v7
-    };
-    const TextLabel = (text, style) => {
-      try { return new PIXI.Text({ text, style }); }                                   // v8
-      catch { const t = new PIXI.Text(text, style); return t; }                        // v7
-    };
+    // Добавляем canvas (v8 -> app.canvas, v7 -> app.view)
+    const canvas = app.canvas || app.view;
+    document.getElementById('app').appendChild(canvas);
 
-    // Пульс — чтобы видеть, что всё живо
-    const pulse = G(); fillRect(pulse, 20,20,160,90, 0x3b82f6); app.stage.addChild(pulse);
+    // Рисуем СИНИЙ прямоугольник — если его видно, Pixi работает
+    const g = new PIXI.Graphics();
+    if (typeof g.rect === 'function') {
+      // v8 API
+      g.rect(20, 20, 160, 90).fill({ color: 0x3b82f6 });
+    } else {
+      // v7 API
+      g.beginFill(0x3b82f6);
+      g.drawRect(20, 20, 160, 90);
+      g.endFill();
+    }
+    app.stage.addChild(g);
 
-    // --- HEX math (pointy-top axial) ---
-    const SQRT3 = Math.sqrt(3);
+    // ---------- HEX РЕНДЕР ----------
+    // общий размер и предрасчитанные точки шестиугольника (pointy-top)
     const size = 40;
-    const axialToPixel = (q,r) => ({
-      x: size * (SQRT3*q + (SQRT3/2)*r),
-      y: size * (1.5*r)
-    });
-    const hexPts = (() => {
-      const p = [];
-      for (let i=0;i<6;i++){ const a=(Math.PI/180)*(60*i-30); p.push(Math.cos(a)*size, Math.sin(a)*size); }
-      return p;
-    })();
-    const DIRS = [ {q:+1,r:0},{q:+1,r:-1},{q:0,r:-1},{q:-1,r:0},{q:-1,r:+1},{q:0,r:+1} ];
-    const key = (q,r)=>`${q},${r}`;
-    const cells = new Map();
-
-    const centerX = (app.renderer?.width || (app.canvas||app.view).width)/2;
-    const centerY = (app.renderer?.height|| (app.canvas||app.view).height)/2;
-
-    function addCell(q,r, color, alpha=0.75) {
-      if (cells.has(key(q,r))) return;
-      const {x,y} = axialToPixel(q,r);
-      const g = G(); fillPoly(g, hexPts, color, alpha); stroke1(g);
-      g.x = centerX + x; g.y = centerY + y;
-      g.eventMode = 'static'; g.cursor = 'pointer';
-      g.on?.('pointerover', ()=> g.tint = 0xff6666);
-      g.on?.('pointerout',  ()=> g.tint = 0xffffff);
-      app.stage.addChild(g);
-      cells.set(key(q,r), {q,r,g});
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 180) * (60 * i - 30); // pointy-top
+      pts.push(Math.cos(a) * size, Math.sin(a) * size);
     }
 
-    // 1) центр
-    addCell(0,0, 0x82b07a, 0.85);
+    // экранный центр
+    const w = (app.renderer?.width) || canvas.width;
+    const h = (app.renderer?.height) || canvas.height;
+    const cx = w / 2, cy = h / 2;
 
-    // 2) кольцо радиуса 1 — 6 соседей
+    // axial -> pixel
+    const SQRT3 = Math.sqrt(3);
+    const axialToPixel = (q, r) => ({
+      x: size * (SQRT3 * q + (SQRT3 / 2) * r),
+      y: size * (1.5 * r)
+    });
+
+    // универсальная отрисовка гекса для v8/v7
+    const isV8 = (typeof (new PIXI.Graphics()).poly === 'function');
+    function drawHexAt(q, r, color, alpha=0.75, strokeAlpha=0.35) {
+      const { x, y } = axialToPixel(q, r);
+      const hex = new PIXI.Graphics();
+      if (isV8) {
+        hex.poly(pts, true).fill({ color, alpha }).stroke({ color: 0xffffff, width: 1, alpha: strokeAlpha });
+      } else {
+        hex.lineStyle(1, 0xffffff, strokeAlpha);
+        hex.beginFill(color, alpha);
+        hex.drawPolygon(pts);
+        hex.endFill();
+      }
+      hex.x = cx + x; hex.y = cy + y;
+      app.stage.addChild(hex);
+
+      // подпись q,r (опционально)
+      let t;
+      try { t = new PIXI.Text({ text: `${q},${r}`, style: { fill: 0xffffff, fontSize: 12 } }); }
+      catch { t = new PIXI.Text(`${q},${r}`, { fill: 0xffffff, fontSize: 12 }); }
+      t.anchor?.set?.(0.5); t.x = hex.x; t.y = hex.y;
+      app.stage.addChild(t);
+    }
+
+    // 1) центр (зелёный)
+    drawHexAt(0, 0, 0x82b07a, 0.85);
+
+    // 2) шесть направлений (для pointy-top)
+    const DIRS = [
+      {q:+1, r: 0}, {q:+1, r:-1}, {q: 0, r:-1},
+      {q:-1, r: 0}, {q:-1, r:+1}, {q: 0, r:+1}
+    ];
+
+    // 3) кольцо радиуса 1 — 6 соседей (синие)
     const ring1 = [];
     for (const d of DIRS) {
-      const q=d.q, r=d.r;
-      ring1.push({q,r,dir:d});
-      addCell(q,r, 0x6aa9ff, 0.7);
+      const nq = d.q, nr = d.r;
+      ring1.push({ q: nq, r: nr, dir: d });
+      drawHexAt(nq, nr, 0x6aa9ff, 0.70);
     }
 
-    // 3) от каждого соседа — луч из 3 гексов наружу (в том же направлении)
-    for (const h of ring1) {
-      const {q,r,dir:{q:dq,r:dr}} = h;
-      for (let step=1; step<=3; step++) addCell(q+dq*step, r+dr*step, 0xffb86b, 0.8);
+    // 4) от каждого соседа — луч из 3 гексов наружу по его направлению (оранжевые)
+    for (const h1 of ring1) {
+      const { q, r, dir:{ q: dq, r: dr } } = h1;
+      for (let step = 1; step <= 3; step++) {
+        drawHexAt(q + dq*step, r + dr*step, 0xffb86b, 0.80);
+      }
     }
 
-    // подписи
-    for (const {q,r,g} of cells.values()) {
-      const t = TextLabel(`${q},${r}`, { fill: 0xffffff, fontSize: 12 });
-      t.anchor?.set?.(0.5); t.x = g.x; t.y = g.y; app.stage.addChild(t);
-    }
-
-    show('OK: центр + 6 вокруг + лучи по 3');
-  } catch (e) {
-    show('Ошибка: ' + (e?.message||e), true);
-  }
-})();
-</script>
+    log('OK: центр + 6 вокруг + лучи по 3');
+  })();
+  </script>
+</body>
+</html>
