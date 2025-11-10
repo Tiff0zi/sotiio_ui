@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Pixi Hex Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body { margin:0; height:100%; overflow:hidden; background:#202020; }
+    #app { width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- 📦 Скрипты из корневой папки PixiJS -->
+  <script src="./PixiJS/pixi.min.js"></script>
+  <script src="./PixiJS/honeycomb-grid.umd.js"></script>
+
+  <script>
+  // === 1. Создаём приложение PIXI ===
+  const app = new PIXI.Application();
+  app.init({ resizeTo: window, background: '#202020' }).then(() => {
+    document.getElementById('app').appendChild(app.canvas);
+
+    // === 2. Настраиваем шестиугольную сетку ===
+    const Grid = Honeycomb.defineGrid(Honeycomb.extendHex({
+      size: 40,              // размер соты (px)
+      orientation: 'pointy', // "вершиной вверх"
+    }));
+
+    const hexes = Grid.rectangle({ width: 6, height: 6 });
+
+    // === 3. Рисуем все соты ===
+    for (const hex of hexes) {
+      const { x, y } = hex.toPoint(); // q,r → x,y
+      const g = new PIXI.Graphics();
+
+      g.lineStyle(1, 0xffffff, 0.4)
+       .beginFill(Math.random() * 0xffffff, 0.6)
+       .drawPolygon(hex.corners().map(corner => [
+         corner.x + x, corner.y + y
+       ]).flat())
+       .endFill();
+
+      g.interactive = true;
+      g.on('pointerover', () => g.tint = 0xff5555);
+      g.on('pointerout',  () => g.tint = 0xffffff);
+
+      app.stage.addChild(g);
+    }
+
+    // === 4. Добавляем подпись ===
+    const label = new PIXI.Text('🧩 Pixi + Honeycomb Hex Demo', {
+      fill: '#ffffff', fontSize: 20
+    });
+    label.x = 20; label.y = 20;
+    app.stage.addChild(label);
+  });
+  </script>
+</body>
+</html>
