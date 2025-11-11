@@ -236,6 +236,23 @@
       ]
     };
 
+    // Добавляем маппинг кодов языков на полные английские названия
+    const languageNames = {
+      'ru': 'russian',
+      'en': 'english', 
+      'es': 'spanish',
+      'de': 'german',
+      'fr': 'french',
+      'pt': 'portuguese',
+      'it': 'italian',
+      'uk': 'ukrainian',
+      'pl': 'polish',
+      'tr': 'turkish',
+      'zh': 'chinese',
+      'ja': 'japanese',
+      'ko': 'korean'
+    };
+
     // Реакция на выбор роли
     document.querySelectorAll('input[name="role"]').forEach(r=>{
       r.addEventListener('change', ()=>{
@@ -361,12 +378,17 @@
     }
 
     function getLanguageReply(){
+      let langCode;
       if(langAuto.checked){
         // авто-значение хранится в data-auto-lang, если определили; иначе берём браузер
         const auto = langSelect.dataset.autoLang;
-        return normalizeLangTag(auto || navigator.language || 'en');
+        langCode = normalizeLangTag(auto || navigator.language || 'en');
+      } else {
+        langCode = langSelect.value || 'en';
       }
-      return langSelect.value || 'en';
+      
+      // Возвращаем полное название языка на английском вместо кода
+      return languageNames[langCode] || 'english';
     }
 
     // Инициализация языка: авто включен, селект заблокирован
@@ -421,7 +443,7 @@
           "So_that...": chosen,
           timestamp: (new Date()).toISOString()
         },
-        // ——— ДОБАВЛЕНО: язык ответа
+        // ——— ИЗМЕНЕНО: передаём полное название языка на английском вместо кода
         language_reply: getLanguageReply()
       };
 
