@@ -295,6 +295,14 @@
         loadingOverlay.classList.remove("active");
     }
 
+    function safeParseTextResponse(response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.text().then(text => {
+            try { return text ? JSON.parse(text) : []; }
+            catch { throw new Error("Невалидный JSON ответ от сервера"); }
+        });
+    }
+
     function sendUserStory() {
         const subject = subjectInput.value.trim();
         const lang    = langSelect.value || "en";
@@ -343,8 +351,9 @@
             setTimeout(() => {
                 loadingDetails.textContent = "Проверяем статус карты...";
 
-                const pollMap = () => {
-                    fetch("https://n8n.sotiio.com/webhook/getmap", {
+                // --- 2a. Опрос jsMind карты ---
+                const pollJsMind = () => {
+                    fetch("https://n8n.sotiio.com/webhook/get_jsmind", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -352,20 +361,14 @@
                         },
                         body: JSON.stringify({ map_id: currentMapId })
                     })
-                    .then(response => {
-                        if (!response.ok) throw new Error("HTTP " + response.status);
-                        return response.text().then(text => {
-                            try { return text ? JSON.parse(text) : []; }
-                            catch { throw new Error("Невалидный JSON ответ от сервера"); }
-                        });
-                    })
+                    .then(safeParseTextResponse)
                     .then(data => {
                         const secondsPassed = Math.floor((new Date() - startTime) / 1000);
 
                         if (data && data.status === "pending") {
                             loadingDetails.textContent =
-                                `Прошло ${secondsPassed} сек. — карта ещё не готова, проверяем снова через 15 секунд...`;
-                            setTimeout(pollMap, pollInterval);
+                                `Прошло ${secondsPassed} сек. — карта (jsMind) ещё не готова, проверяем снова через 15 секунд...`;
+                            setTimeout(pollJsMind, pollInterval);
                             return;
                         }
 
@@ -376,29 +379,74 @@
                         if (nodeTree && nodeTree.format === "node_tree" && nodeTree.data) {
                             // передаём в родительский фрейм
                             if (window.parent && window.parent !== window) {
+                                const send = () => {
+                                    window.parent.postMessage(
+                                        { type: "map:jsmind", payload: nodeTree },
+                                        "*"
+                                    );
+                                };
+
                                 if (window.parent.UI && typeof window.parent.UI.closeUserStory === "function") {
                                     window.parent.UI.closeUserStory();
-                                    setTimeout(() => {
-                                        window.parent.postMessage({ type: "map:set", payload: nodeTree }, "*");
-                                    }, 400);
+                                    setTimeout(send, 400);
                                 } else {
-                                    window.parent.postMessage({ type: "map:set", payload: nodeTree }, "*");
+                                    send();
                                 }
                             }
+                            submitBtn.disabled = false;
                         } else {
-                            console.warn("Неожиданная структура ответа:", data);
-                            say("Карта не была создана. Неожиданный формат ответа.", "crimson");
+                            console.warn("Неожиданная структура ответа (jsMind):", data);
+                            say("Карта jsMind не была создана. Неожиданный формат ответа.", "crimson");
                             submitBtn.disabled = false;
                         }
                     })
                     .catch(err => {
                         stopOverlay();
-                        say("Ошибка при получении карты: " + err.message, "crimson");
+                        say("Ошибка при получении jsMind карты: " + err.message, "crimson");
                         submitBtn.disabled = false;
                     });
                 };
 
-                pollMap();
+                // --- 2b. Опрос Pixi карты ---
+                const pollPixi = () => {
+                    fetch("https://n8n.sotiio.com/webhook/get_pixi", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        },
+                        body: JSON.stringify({ map_id: currentMapId })
+                    })
+                    .then(safeParseTextResponse)
+                    .then(data => {
+                        if (data && data.status === "pending") {
+                            // Тихо ждём, не трогаем overlay / кнопку
+                            setTimeout(pollPixi, pollInterval);
+                            return;
+                        }
+
+                        const pixiMap = Array.isArray(data) ? data[0] : data;
+
+                        if (pixiMap && pixiMap.format && pixiMap.cells) {
+                            if (window.parent && window.parent !== window) {
+                                window.parent.postMessage(
+                                    { type: "map:pixi", payload: pixiMap },
+                                    "*"
+                                );
+                            }
+                        } else {
+                            console.warn("Неожиданная структура ответа (Pixi):", data);
+                        }
+                    })
+                    .catch(err => {
+                        console.warn("Ошибка при получении Pixi карты:", err);
+                        // Ничего не ломаем в UI, просто лог
+                    });
+                };
+
+                // Запускаем оба опроса параллельно
+                pollJsMind();
+                pollPixi();
             }, initialDelay);
         });
     }
