@@ -19,7 +19,6 @@
         overflow: hidden;
     }
 
-    /* ——— FULLSCREEN CENTERING ——— */
     .container {
         position: fixed;
         inset: 0;
@@ -27,13 +26,10 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-
-        /* 10% заполняемости — большие элементы, остальное пустота */
         gap: 40px;
         z-index: 1;
     }
 
-    /* ——— TITLE (ГИГАНТИЗМ) ——— */
     h1 {
         font-size: 60px;
         font-weight: 800;
@@ -42,30 +38,21 @@
         line-height: 1.1;
     }
 
-    /* ——— INPUT ——— */
     .giant-input {
         width: 50vw;
         max-width: 900px;
-
         padding: 28px 30px;
         font-size: 32px;
         text-align: center;
-
-        background: #2A2A2A; /* n8n panel color */
+        background: #2A2A2A;
         border: 2px solid #3F3F3F;
         border-radius: 14px;
         color: #F5F5F5;
-
         outline: none;
     }
-    .giant-input::placeholder {
-        color: #8a8a8a;
-    }
-    .giant-input:focus {
-        border-color: #FF6A3C;
-    }
+    .giant-input::placeholder { color: #8a8a8a; }
+    .giant-input:focus { border-color: #FF6A3C; }
 
-    /* ——— BUTTON ——— */
     .primary-btn {
         padding: 25px 80px;
         background: #FF6A3C;
@@ -77,15 +64,12 @@
         cursor: pointer;
         transition: background .15s;
     }
-    .primary-btn:hover {
-        background: #FF7E55;
-    }
+    .primary-btn:hover { background: #FF7E55; }
     .primary-btn:disabled {
         background: #555;
         cursor: not-allowed;
     }
 
-    /* ——— LANGUAGE DROPDOWN ——— */
     .lang {
         position: absolute;
         top: 25px;
@@ -101,7 +85,6 @@
         color: #fff;
     }
 
-    /* ——— STATUS TEXT ——— */
     .status {
         position: fixed;
         bottom: 24px;
@@ -114,7 +97,6 @@
         z-index: 1;
     }
 
-    /* ——— LOADING OVERLAY ——— */
     .loading-overlay {
         position: fixed;
         inset: 0;
@@ -125,9 +107,8 @@
         justify-content: center;
         z-index: 10;
     }
-    .loading-overlay.active {
-        display: flex;
-    }
+    .loading-overlay.active { display: flex; }
+
     .spinner {
         width: 40px;
         height: 40px;
@@ -194,8 +175,6 @@
 </head>
 
 <body>
-
-<!-- LANGUAGE -->
 <div class="lang">
     <select id="langSelect" class="lang-select">
         <option value="ru">Русский (ru)</option>
@@ -214,7 +193,6 @@
     </select>
 </div>
 
-<!-- CENTER CONTENT -->
 <div class="container">
     <h1>Выбери вселенную<br>для исследования</h1>
 
@@ -226,7 +204,6 @@
 
 <div id="status" class="status"></div>
 
-<!-- LOADING OVERLAY -->
 <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
     <div class="loading-text">Создаём вашу карту знаний...</div>
@@ -312,7 +289,6 @@
             return;
         }
 
-        // генерим map_id
         currentMapId = mapIdFromNow();
         say("");
         submitBtn.disabled = true;
@@ -322,16 +298,14 @@
             source: "sotiio_web_survey",
             map_id: currentMapId,
             user_story: {
-                "I_as...": "Explorer", // дефолтная роль, т.к. вопрос выключен
+                "I_as...": "Explorer",
                 "Want_to_discover_a_universe...": subject,
                 "So_that...": ["Исследовать вселенную в общем виде"],
                 timestamp: new Date().toISOString()
             },
-            // язык — как есть из селекта (ru/en/…)
             language_reply: lang
         };
 
-        // 1. Отправляем запрос на создание карты
         fetch("https://n8n.sotiio.com/webhook/us", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -342,7 +316,6 @@
         })
         .catch(err => {
             console.warn("Ошибка при отправке:", err);
-            // даже если ошибка, всё равно запускаем опрос — вдруг бэк принял
         })
         .finally(() => {
             const pollInterval = 15000;   // 15 сек
@@ -351,7 +324,7 @@
             setTimeout(() => {
                 loadingDetails.textContent = "Проверяем статус карты...";
 
-                // --- 2a. Опрос jsMind карты ---
+                // jsMind
                 const pollJsMind = () => {
                     fetch("https://n8n.sotiio.com/webhook/get_jsmind", {
                         method: "POST",
@@ -377,12 +350,11 @@
                         const nodeTree = Array.isArray(data) ? data[0] : data;
 
                         if (nodeTree && nodeTree.format === "node_tree" && nodeTree.data) {
-                            // передаём в родительский фрейм
                             if (window.parent && window.parent !== window) {
                                 const send = () => {
                                     window.parent.postMessage(
-                                        { type: "map:jsmind", payload: nodeTree },
-                                        "*"
+                                      { type: "map:jsmind", payload: nodeTree },
+                                      "*"
                                     );
                                 };
 
@@ -407,7 +379,7 @@
                     });
                 };
 
-                // --- 2b. Опрос Pixi карты ---
+                // Pixi
                 const pollPixi = () => {
                     fetch("https://n8n.sotiio.com/webhook/get_pixi", {
                         method: "POST",
@@ -420,7 +392,6 @@
                     .then(safeParseTextResponse)
                     .then(data => {
                         if (data && data.status === "pending") {
-                            // Тихо ждём, не трогаем overlay / кнопку
                             setTimeout(pollPixi, pollInterval);
                             return;
                         }
@@ -430,8 +401,8 @@
                         if (pixiMap && pixiMap.format && pixiMap.cells) {
                             if (window.parent && window.parent !== window) {
                                 window.parent.postMessage(
-                                    { type: "map:pixi", payload: pixiMap },
-                                    "*"
+                                  { type: "map:pixi", payload: pixiMap },
+                                  "*"
                                 );
                             }
                         } else {
@@ -440,11 +411,9 @@
                     })
                     .catch(err => {
                         console.warn("Ошибка при получении Pixi карты:", err);
-                        // Ничего не ломаем в UI, просто лог
                     });
                 };
 
-                // Запускаем оба опроса параллельно
                 pollJsMind();
                 pollPixi();
             }, initialDelay);
