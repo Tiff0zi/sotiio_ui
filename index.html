@@ -275,7 +275,7 @@
   <div class="layout" id="mainLayout">
     <section id="viewerWrap">
       <div class="topbar">
-        <!-- Заменяем текстовую кнопку на иконку -->
+        <!-- Кнопка для повторного открытия модального окна -->
         <button class="icon-btn" onclick="window.UI.openUserStory()" title="Новое исследование">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -291,7 +291,8 @@
     </aside>
   </div>
 
-  <div id="modalUS" class="modal" aria-hidden="true">
+  <!-- Модальное окно, которое будет открыто автоматически -->
+  <div id="modalUS" class="modal open" aria-hidden="false">
     <div class="modal-card">
       <iframe id="userstoryFrame" src="userstory.html" title="Форма исследования"></iframe>
     </div>
@@ -455,6 +456,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeContainer();
+        closeUserStory();
       }
     });
 
@@ -509,10 +511,11 @@
       closeContainer
     };
 
-    // Авто-открытие формы на продакшене
-    if (location.hostname === 'www.sotiio.com' && location.pathname === '/index.html') {
-      setTimeout(openUserStory, 500);
-    }
+    // Модальное окно открывается автоматически при загрузке
+    // Уже открыто по умолчанию через класс "open" в разметке
+    // Можно также раскомментировать строку ниже для программного открытия:
+    // openUserStory();
+
   })();
   </script>
 </body>
