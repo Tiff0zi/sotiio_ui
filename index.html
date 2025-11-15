@@ -3,7 +3,6 @@
   <meta charset="utf-8" />
   <title>sotiio — index</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="/static/style/jsmind.css" />
   <style>
     * { box-sizing: border-box; }
     html, body { 
@@ -14,7 +13,7 @@
       background: #1e1e1e;
       color: #e0e0e0;
     }
-    
+
     .layout { 
       display: grid;
       grid-template-columns: 1fr 0px;
@@ -33,20 +32,20 @@
       background: #1e1e1e;
       overflow: hidden;
     }
-    
-    #jsmind_container, 
-    #pixi_container { 
-      height: 100%; 
-      width: 100%;
+
+    #jsmindFrame,
+    #pixiFrame {
       position: absolute;
       inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
-    /* по умолчанию — jsMind */
-    #viewerWrap.view-mode-jsmind #jsmind_container { display: block; }
-    #viewerWrap.view-mode-jsmind #pixi_container { display: none; }
-    #viewerWrap.view-mode-pixi #jsmind_container { display: none; }
-    #viewerWrap.view-mode-pixi #pixi_container { display: block; }
+    #viewerWrap.view-mode-jsmind #jsmindFrame { display: block; }
+    #viewerWrap.view-mode-jsmind #pixiFrame { display: none; }
+    #viewerWrap.view-mode-pixi #jsmindFrame { display: none; }
+    #viewerWrap.view-mode-pixi #pixiFrame { display: block; }
 
     /* Topbar */
     .topbar {
@@ -58,8 +57,7 @@
       gap: 10px;
       align-items: center;
     }
-    
-    /* Стили для квадратной кнопки */
+
     .icon-btn {
       width: 44px;
       height: 44px;
@@ -90,7 +88,6 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
-    /* Tooltip для кнопки */
     .icon-btn::after {
       content: "Новое исследование";
       position: absolute;
@@ -150,12 +147,13 @@
       overflow: hidden;
       opacity: 0;
       transition: opacity 0.2s ease;
+      position: relative;
     }
-    
+
     .layout.with-container aside {
       opacity: 1;
     }
-    
+
     #containerFrame {
       width: 100%;
       height: 100%;
@@ -163,7 +161,6 @@
       display: block;
     }
 
-    /* Close button for container */
     .close-container {
       position: absolute;
       top: 12px;
@@ -180,13 +177,13 @@
       display: none;
       transition: all 0.2s ease;
     }
-    
+
     .layout.with-container .close-container {
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
+
     .close-container:hover {
       background: #444;
       color: #fff;
@@ -203,11 +200,11 @@
       z-index: 10000;
       padding: 4vh 4vw;
     }
-    
+
     .modal.open {
       display: flex;
     }
-    
+
     .modal-card {
       width: min(820px, 96vw);
       height: min(640px, 88vh);
@@ -217,7 +214,7 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       border: 1px solid #444;
     }
-    
+
     #userstoryFrame {
       width: 100%;
       height: 100%;
@@ -225,109 +222,37 @@
       display: block;
     }
 
-    /* === Тёмная палитра для карты === */
-    :root {
-      --bg: #1e1e1e;
-      --lvl0: #2c2c2c;
-      --lvl1: #3a3a3a;
-      --lvl2: #484848;
-      --lvl3: #565656;
-      --sel: #34a2db;
-    }
-
-    jmnode {
-      border-radius: 6px !important;
-      border: 1px solid rgba(255,255,255,0.1) !important;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-      font-family: inherit !important;
-      cursor: pointer;
-      transition: all 0.2s ease !important;
-    }
-
-    jmnode.jsmind-root { 
-      background: var(--lvl0) !important; 
-      color: #fff !important; 
-      font-size: 20px !important;
-      border: 1px solid rgba(255,255,255,0.15) !important;
-    }
-    
-    jmnode.lvl-1 { 
-      background: var(--lvl1) !important; 
-      color: #fff !important; 
-    }
-    
-    jmnode.lvl-2 { 
-      background: var(--lvl2) !important; 
-      color: #fff !important; 
-    }
-    
-    jmnode.lvl-3 { 
-      background: var(--lvl3) !important; 
-      color: #fff !important; 
-    }
-
-    jmnode.selected { 
-      background: var(--sel) !important; 
-      border-color: var(--sel) !important; 
-      color: #fff !important; 
-      outline: none !important;
-      box-shadow: 0 4px 12px rgba(52, 162, 219, 0.3) !important;
-    }
-
-    /* Стили для линий между узлами */
-    jmnode:before {
-      border-color: #444 !important;
-    }
-
-    jmnode:after {
-      border-color: #444 !important;
-    }
-
-    /* Дополнительные улучшения для тёмной темы */
-    .jmnode-wrapper {
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-    }
-
     /* Scrollbar styling */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
     }
-
-    ::-webkit-scrollbar-track {
-      background: #2c2c2c;
-    }
-
+    ::-webkit-scrollbar-track { background: #2c2c2c; }
     ::-webkit-scrollbar-thumb {
       background: #555;
       border-radius: 4px;
     }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #666;
-    }
+    ::-webkit-scrollbar-thumb:hover { background: #666; }
   </style>
 </head>
 <body>
   <div class="layout" id="mainLayout">
     <section id="viewerWrap" class="view-mode-jsmind">
       <div class="topbar">
-        <!-- Кнопка для повторного открытия модального окна -->
         <button class="icon-btn" onclick="window.UI.openUserStory()" title="Новое исследование">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
 
-        <!-- Переключатель режима -->
         <div class="view-toggle">
           <button class="view-toggle-btn active" data-view-mode="jsmind">jsMind</button>
           <button class="view-toggle-btn" data-view-mode="pixi">Pixi</button>
         </div>
       </div>
 
-      <div id="jsmind_container"></div>
-      <div id="pixi_container"></div>
+      <iframe id="jsmindFrame" src="jsmind.html" title="jsMind карта"></iframe>
+      <iframe id="pixiFrame" src="pixi.html" title="Pixi карта"></iframe>
     </section>
 
     <aside>
@@ -336,171 +261,23 @@
     </aside>
   </div>
 
-  <!-- Модальное окно, которое будет открыто автоматически -->
+  <!-- userstory модалка по умолчанию открыта -->
   <div id="modalUS" class="modal open" aria-hidden="false">
     <div class="modal-card">
       <iframe id="userstoryFrame" src="userstory.html" title="Форма исследования"></iframe>
     </div>
   </div>
 
-  <script src="/static/js/jsmind.js"></script>
-  <script src="./PixiJS/pixi.min.js"></script>
   <script>
   (function(){
-    // --- 1) jsMind viewer ---
-    const jm = new jsMind({
-      container:'jsmind_container',
-      editable:false,
-      support_html:true,
-      view:{hmargin:140, vmargin:30, line_style:'curved'},
-      layout:{hspace:80, vspace:20, pspace:10, direction:'right'}
-    });
+    const viewerWrap   = document.getElementById('viewerWrap');
+    const modeButtons  = document.querySelectorAll('.view-toggle-btn');
+    const mainLayout   = document.getElementById('mainLayout');
+    const containerFrame = document.getElementById('containerFrame');
+    const modal        = document.getElementById('modalUS');
+    const jsmindFrame  = document.getElementById('jsmindFrame');
+    const pixiFrame    = document.getElementById('pixiFrame');
 
-    let selectedNode = null;
-
-    function tagLevels(){
-      const root = jm.get_root();
-      if (!root) return;
-      
-      const walk = (node, level) => {
-        const el = document.querySelector(\`.jmnode[nodeid="\${node.id}"]\`);
-        if (el) {
-          el.classList.remove('lvl-0', 'lvl-1', 'lvl-2', 'lvl-3', 'jsmind-root');
-          if (level === 0) {
-            el.classList.add('jsmind-root');
-          } else {
-            el.classList.add('lvl-' + Math.min(level, 3));
-          }
-        }
-        
-        if (node.children) {
-          node.children.forEach(child => walk(child, level + 1));
-        }
-      };
-      
-      walk(root, 0);
-    }
-
-    function toNodeTreeIfPossible(src){
-      try{
-        if (src && src.format==='node_tree' && src.data) return src;
-        
-        const looksLike = (n)=> n && (n.label || n.topic) && (n.node_id || n.id);
-        
-        function mapNode(n){
-          if(!n || typeof n!=='object') return null;
-          const out = { 
-            id: String(n.node_id || n.id), 
-            topic: String(n.label || n.topic || '') 
-          };
-          
-          const {label, node_id, topic, children, ...rest} = n;
-          const dataPack = { 
-            data: { 
-              node_id: node_id || n.id, 
-              label: label || topic || '', 
-              ...(rest || {}) 
-            } 
-          };
-          
-          if(Array.isArray(children)){
-            out.children = children.map(mapNode).filter(Boolean);
-          }
-          return Object.assign(out, { data: dataPack });
-        }
-        
-        if (looksLike(src)) return { format:'node_tree', data: mapNode(src) };
-        if (src && src.map && looksLike(src.map)) return { format:'node_tree', data: mapNode(src.map) };
-        if (Array.isArray(src)){
-          for(const it of src){
-            if (it && it.map && looksLike(it.map)) return { format:'node_tree', data: mapNode(it.map) };
-            if (looksLike(it)) return { format:'node_tree', data: mapNode(it) };
-          }
-        }
-      }catch(e){
-        console.warn('Conversion failed:', e);
-      }
-      return src;
-    }
-
-    async function setData(mind){
-      const safe = toNodeTreeIfPossible(mind);
-      if (!safe || safe.format!=='node_tree' || !safe.data) {
-        console.error('index.html: нужен {format:"node_tree", data:{...}}');
-        throw new Error('Неверный формат карты: нужен node_tree');
-      }
-      
-      jm.show(safe); 
-      jm.collapse_all(); 
-      const root = jm.get_root(); 
-      if(root) jm.expand_node(root.id);
-      
-      setTimeout(() => {
-        tagLevels();
-        jm.resize();
-      }, 100);
-      
-      window.addEventListener('resize', ()=> jm.resize());
-    }
-
-    // Функции для управления контейнером
-    function openContainer(node, element) {
-      const layout = document.getElementById('mainLayout');
-      layout.classList.add('with-container');
-      
-      // Снимаем выделение с предыдущего узла
-      if (selectedNode) {
-        selectedNode.classList.remove('selected');
-      }
-      
-      // Выделяем текущий узел
-      if (element) {
-        element.classList.add('selected');
-        selectedNode = element;
-      }
-      
-      // Отправляем данные в контейнер
-      const envelope = { 
-        type: 'container:set', 
-        payload: (node.data || {}) 
-      };
-      
-      try{
-        document.getElementById('containerFrame').contentWindow.postMessage(envelope, '*');
-      }catch(err){
-        console.warn('containerFrame postMessage failed', err);
-      }
-    }
-
-    function closeContainer() {
-      const layout = document.getElementById('mainLayout');
-      layout.classList.remove('with-container');
-      
-      // Снимаем выделение с узла
-      if (selectedNode) {
-        selectedNode.classList.remove('selected');
-        selectedNode = null;
-      }
-    }
-
-    // Клик по узлу -> открываем контейнер
-    document.getElementById('jsmind_container').addEventListener('click', (e)=>{
-      const el = e.target.closest('jmnode');
-      if(!el) {
-        // Клик вне узла - закрываем контейнер
-        closeContainer();
-        return;
-      }
-      
-      const node = jm.get_node(el.getAttribute('nodeid'));
-      if(!node) return;
-      
-      openContainer(node, el);
-    });
-
-    // --- Переключатель режима (jsMind / Pixi) ---
-    const viewerWrap = document.getElementById('viewerWrap');
-    const modeButtons = document.querySelectorAll('.view-toggle-btn');
     let currentMode = 'jsmind';
 
     function setMode(mode) {
@@ -518,240 +295,32 @@
 
     setMode('jsmind');
 
-    // --- 2) Pixi viewer (минимальный, под JSON) ---
-    let pixiApp = null;
-    let pixiContainer = null;
-    let pixiHexes = [];
-    let pixiSelectedHex = null;
-    let pixiInitialized = false;
-
-    const SQRT3 = Math.sqrt(3);
-    const HEX_SIZE = 42;
-
-    function axialToPixel(q, r) {
-      return {
-        x: HEX_SIZE * (SQRT3 * q + (SQRT3/2) * r),
-        y: HEX_SIZE * (1.5 * r)
-      };
-    }
-
-    function createHexPoints(radius) {
-      const points = [];
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 180) * (60 * i - 30);
-        points.push(
-          Math.cos(angle) * radius,
-          Math.sin(angle) * radius
+    // Контейнер (правая панель)
+    function openContainer(payload) {
+      mainLayout.classList.add('with-container');
+      try {
+        containerFrame.contentWindow.postMessage(
+          { type: 'container:set', payload },
+          '*'
         );
+      } catch (err) {
+        console.warn('containerFrame postMessage failed', err);
       }
-      return points;
     }
 
-    const HEX_PTS = createHexPoints(HEX_SIZE);
-
-    async function initPixi() {
-      if (pixiInitialized) return;
-      if (!window.PIXI) {
-        console.warn('PIXI не найден, режим Pixi недоступен');
-        return;
-      }
-
-      pixiInitialized = true;
-
-      const viewEl = document.getElementById('pixi_container');
-      const rect = viewEl.getBoundingClientRect();
-
-      pixiApp = new PIXI.Application();
-      await pixiApp.init({
-        width: rect.width || window.innerWidth,
-        height: rect.height || window.innerHeight,
-        background: '#1e1e1e',
-        antialias: true,
-        resolution: 1
-      });
-      viewEl.appendChild(pixiApp.canvas);
-
-      pixiContainer = new PIXI.Container();
-      pixiApp.stage.addChild(pixiContainer);
-
-      // Центруем
-      pixiContainer.x = pixiApp.screen.width / 2;
-      pixiContainer.y = pixiApp.screen.height / 2;
-
-      // Пан/зум
-      let isDragging = false;
-      let lastMousePosition = null;
-      let scale = 1;
-      const minScale = 0.5;
-      const maxScale = 2;
-
-      pixiApp.stage.eventMode = 'static';
-      pixiApp.stage.hitArea = pixiApp.screen;
-      
-      pixiApp.stage.on('pointerdown', (event) => {
-        isDragging = true;
-        lastMousePosition = event.global.clone();
-      });
-
-      pixiApp.stage.on('pointerup', () => {
-        isDragging = false;
-        lastMousePosition = null;
-      });
-
-      pixiApp.stage.on('pointerupoutside', () => {
-        isDragging = false;
-        lastMousePosition = null;
-      });
-
-      pixiApp.stage.on('pointermove', (event) => {
-        if (!isDragging || !lastMousePosition) return;
-        
-        const newMousePosition = event.global.clone();
-        const deltaX = newMousePosition.x - lastMousePosition.x;
-        const deltaY = newMousePosition.y - lastMousePosition.y;
-        
-        pixiContainer.x += deltaX;
-        pixiContainer.y += deltaY;
-        
-        lastMousePosition = newMousePosition;
-      });
-
-      pixiApp.canvas.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        
-        const zoomSpeed = 0.1;
-        const zoomFactor = event.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
-        const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
-        
-        if (newScale !== scale) {
-          const mouseX = event.clientX;
-          const mouseY = event.clientY;
-          
-          const worldPos = {
-            x: (mouseX - pixiContainer.x) / scale,
-            y: (mouseY - pixiContainer.y) / scale
-          };
-          
-          scale = newScale;
-          pixiContainer.scale.set(scale);
-          
-          pixiContainer.x = mouseX - worldPos.x * scale;
-          pixiContainer.y = mouseY - worldPos.y * scale;
-        }
-      }, { passive: false });
+    function closeContainer() {
+      mainLayout.classList.remove('with-container');
+      // рамки / стили выделения внутри jsmind/pixi они сами могут сбрасывать
     }
 
-    function clearPixiMap() {
-      if (!pixiContainer) return;
-      pixiContainer.removeChildren();
-      pixiHexes = [];
-      pixiSelectedHex = null;
+    // userstory модалка
+    function openUserStory(){
+      document.body.style.overflow = 'hidden';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
     }
 
-    function createHex(q, r, labelText) {
-      const {x, y} = axialToPixel(q, r);
-
-      const graphics = new PIXI.Graphics();
-      graphics.poly(HEX_PTS, true)
-              .fill(0x000000, 0)
-              .stroke({ color: 0xffffff, width: 1, alpha: 1 });
-
-      graphics.x = x;
-      graphics.y = y;
-      graphics.eventMode = 'static';
-      graphics.cursor = 'pointer';
-      graphics.hitArea = new PIXI.Polygon(HEX_PTS);
-      pixiContainer.addChild(graphics);
-
-      const text = new PIXI.Text({
-        text: labelText || '',
-        style: {
-          fill: 0xffffff,
-          fontSize: 12,
-          fontFamily: 'system-ui, Arial',
-          fontWeight: '500'
-        }
-      });
-      text.anchor.set(0.5);
-      text.x = x;
-      text.y = y;
-      pixiContainer.addChild(text);
-
-      return {
-        graphics,
-        text,
-        q,
-        r,
-        selected: false
-      };
-    }
-
-    function wirePixiInteractions(hexObj) {
-      hexObj.graphics.on('pointerover', () => {
-        if (!hexObj.selected) {
-          hexObj.graphics.clear()
-                .poly(HEX_PTS, true)
-                .fill(0x000000, 0)
-                .stroke({ color: 0x34a2db, width: 2, alpha: 1 });
-        }
-      });
-
-      hexObj.graphics.on('pointerout', () => {
-        if (!hexObj.selected) {
-          hexObj.graphics.clear()
-                .poly(HEX_PTS, true)
-                .fill(0x000000, 0)
-                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
-        }
-      });
-
-      hexObj.graphics.on('pointertap', () => {
-        if (pixiSelectedHex && pixiSelectedHex !== hexObj) {
-          pixiSelectedHex.selected = false;
-          pixiSelectedHex.graphics.clear()
-                .poly(HEX_PTS, true)
-                .fill(0x000000, 0)
-                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
-        }
-
-        if (hexObj.selected) {
-          hexObj.selected = false;
-          hexObj.graphics.clear()
-                .poly(HEX_PTS, true)
-                .fill(0x000000, 0)
-                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
-          pixiSelectedHex = null;
-        } else {
-          hexObj.selected = true;
-          pixiSelectedHex = hexObj;
-          hexObj.graphics.clear()
-                .poly(HEX_PTS, true)
-                .fill(0x34a2db, 1)
-                .stroke({ color: 0xffffff, width: 2, alpha: 1 });
-        }
-      });
-    }
-
-    async function setPixiMap(map) {
-      await initPixi();
-      if (!pixiContainer) return;
-
-      clearPixiMap();
-
-      const cells = Array.isArray(map && map.cells) ? map.cells : [];
-      cells.forEach(cell => {
-        const q = Number(cell.q) || 0;
-        const r = Number(cell.r) || 0;
-        const hex = createHex(q, r, cell.label || '');
-        hex.data = cell.data || {};
-        pixiHexes.push(hex);
-        wirePixiInteractions(hex);
-      });
-    }
-
-    // Закрытие по Escape
     function closeUserStory(){
-      const modal = document.getElementById('modalUS');
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden','true');
       document.body.style.overflow = '';
@@ -764,60 +333,41 @@
       }
     });
 
-    // Публичный API
-    window.MapViewer = { 
-      setData,           // jsMind
-      setJsmind: setData,
-      setPixi: setPixiMap,
-      setMode,
-      getInstance(){ return jm; } 
-    };
-
-    // --- 2) Обработка сообщений ---
-    window.addEventListener('message', (ev)=>{
+    // Роутинг сообщений
+    window.addEventListener('message', (ev) => {
       const msg = ev.data || {};
-      
-      if (msg.type === 'map:set' || msg.type === 'map:jsmind') {
-        setData(msg.payload).catch(err=>{
-          alert('Ошибка показа карты (jsMind): ' + err.message);
-        });
+
+      // из userstory -> карты
+      if (msg.type === 'map:jsmind') {
+        setMode('jsmind');
+        try {
+          jsmindFrame.contentWindow.postMessage(msg, '*');
+        } catch (e) {
+          console.warn('forward to jsmindFrame failed', e);
+        }
+        // userstory сама попросит закрыть модалку через UI.closeUserStory
       }
 
       if (msg.type === 'map:pixi') {
-        setPixiMap(msg.payload).catch(err => {
-          alert('Ошибка показа карты (Pixi): ' + err.message);
-        });
-      }
-      
-      if (msg.type === 'container:set') {
-        try{
-          document.getElementById('containerFrame').contentWindow.postMessage(msg, '*');
-        }catch(err){
-          console.warn('Forward to container failed', err);
+        // не обязательно переключать режим, но логично
+        try {
+          pixiFrame.contentWindow.postMessage(msg, '*');
+        } catch (e) {
+          console.warn('forward to pixiFrame failed', e);
         }
+      }
+
+      // из jsmind/pixi -> контейнер
+      if (msg.type === 'container:set') {
+        openContainer(msg.payload || {});
       }
     });
 
-    // --- 3) Управление модалкой ---
-    const modal = document.getElementById('modalUS');
-    
-    function openUserStory(){
-      document.body.style.overflow = 'hidden';
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden','false');
-    }
-    
-    modal.addEventListener('click', (e)=>{
-      if(e.target === modal) closeUserStory();
-    });
-    
-    window.UI = { 
-      openUserStory, 
+    window.UI = {
+      openUserStory,
       closeUserStory,
-      openContainer,
       closeContainer
     };
-    // модалка уже открыта по классу open
   })();
   </script>
 </body>
