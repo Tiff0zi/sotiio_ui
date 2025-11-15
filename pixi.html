@@ -15,8 +15,8 @@
   </style>
 </head>
 <body>
-  <!-- Путь как в репо: /PixiJS/pixi.min.js рядом с html -->
-  <script src="./PixiJS/pixi.min.js"></script>
+  <!-- Путь как в репо: /PixiJS/pixi.min.js рядом с root -->
+  <script src="/PixiJS/pixi.min.js"></script>
 
   <script>
   (async () => {
@@ -27,8 +27,8 @@
 
     const app = new PIXI.Application();
     await app.init({
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: 1,       // стартуем с 1x1, потом ресайзим
+      height: 1,
       background: '#1e1e1e',
       antialias: true,
       resolution: 1
@@ -38,9 +38,25 @@
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
-    // центрируем контейнер
-    container.x = app.screen.width / 2;
-    container.y = app.screen.height / 2;
+    // ─── РЕСАЙЗ: подгоняем под реальный размер iframe ─────────
+    function resizeApp() {
+      const w = document.documentElement.clientWidth || window.innerWidth || 800;
+      const h = document.documentElement.clientHeight || window.innerHeight || 600;
+
+      app.renderer.resize(w, h);
+
+      // центрируем контейнер после ресайза
+      container.x = w / 2;
+      container.y = h / 2;
+
+      console.log('Pixi: resizeApp ->', w, 'x', h);
+    }
+
+    // на всякий случай при обычном ресайзе окна
+    window.addEventListener('resize', resizeApp);
+
+    // сделаем первый ресайз чуть позже (когда iframe уже мог отрисоваться)
+    setTimeout(resizeApp, 200);
 
     // ─── Пан/зум (как в hex_test) ──────────────────────────────
     let isDragging = false;
@@ -143,6 +159,7 @@
       const { x, y } = axialToPixel(q, r);
 
       const graphics = new PIXI.Graphics();
+
       graphics.poly(HEX_PTS, true)
               .fill(0x000000, 0)
               .stroke({ color: 0xffffff, width: 1, alpha: 1 });
@@ -179,9 +196,8 @@
       };
     };
 
-    // ховеры/клики + postMessage в container.html
     const wireInteractions = (hexObj) => {
-      if (hexObj === centerHex) return; // центральную не трогаем
+      if (hexObj === centerHex) return;
 
       hexObj.graphics.on('pointerover', () => {
         if (!hexObj.selected) {
@@ -289,7 +305,6 @@
 
       console.log('Pixi: строим карту из', cells.length, 'ячеек');
 
-      // рисуем по q/r как есть
       cells.forEach((cell, idx) => {
         const q = Number(cell.q) || 0;
         const r = Number(cell.r) || 0;
@@ -300,7 +315,6 @@
         HEXES.push(hex);
 
         if (idx === 0) {
-          // первый – центральный оранжевый
           centerHex = hex;
           hex.graphics.clear()
             .poly(HEX_PTS, true)
@@ -311,7 +325,7 @@
         }
       });
 
-      // debug-маяк в геометрическом центре (0,0)
+      // debug-маяк в центре (0,0)
       const dbg = new PIXI.Graphics();
       dbg.rect(-20, -20, 40, 40).fill(0xff0000, 1);
       container.addChild(dbg);
@@ -323,16 +337,20 @@
       console.log('Pixi: raw payload', raw);
       const norm = normalizePixiPayload(raw);
       console.log('Pixi: normalized payload', norm);
+      resizeApp();           // на всякий случай ещё раз перед отрисовкой
       buildFromCells(norm.cells || []);
     }
 
-    // ─── API и приём сообщений от index.html ───────────────────
+    // ─── API и сообщения от index.html ─────────────────────────
     window.PixiViewer = { setData: drawMap };
 
     window.addEventListener('message', (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'map:pixi') {
         drawMap(msg.payload);
+      }
+      if (msg.type === 'pixi:resize') {
+        resizeApp();
       }
     });
 
