@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Pixi viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html,body {
+      margin:0;
+      height:100%;
+      overflow:hidden;
+      background:#1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <script src="./PixiJS/pixi.min.js"></script>
+
+  <script>
+  (async () => {
+    if (!window.PIXI) {
+      console.error('PIXI не найден');
+      return;
+    }
+
+    const app = new PIXI.Application();
+    await app.init({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      background: '#1e1e1e',
+      antialias: true,
+      resolution: 1
+    });
+    document.body.appendChild(app.canvas);
+
+    const container = new PIXI.Container();
+    app.stage.addChild(container);
+
+    container.x = app.screen.width / 2;
+    container.y = app.screen.height / 2;
+
+    // Пан/зум
+    let isDragging = false;
+    let lastMousePosition = null;
+    let scale = 1;
+    const minScale = 0.5;
+    const maxScale = 2;
+
+    app.stage.eventMode = 'static';
+    app.stage.hitArea = app.screen;
+
+    app.stage.on('pointerdown', (event) => {
+      isDragging = true;
+      lastMousePosition = event.global.clone();
+    });
+
+    app.stage.on('pointerup', () => {
+      isDragging = false;
+      lastMousePosition = null;
+    });
+
+    app.stage.on('pointerupoutside', () => {
+      isDragging = false;
+      lastMousePosition = null;
+    });
+
+    app.stage.on('pointermove', (event) => {
+      if (!isDragging || !lastMousePosition) return;
+      const newMousePosition = event.global.clone();
+      const deltaX = newMousePosition.x - lastMousePosition.x;
+      const deltaY = newMousePosition.y - lastMousePosition.y;
+      container.x += deltaX;
+      container.y += deltaY;
+      lastMousePosition = newMousePosition;
+    });
+
+    app.canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const zoomSpeed = 0.1;
+      const zoomFactor = event.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
+      const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
+
+      if (newScale !== scale) {
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
+        const worldPos = {
+          x: (mouseX - container.x) / scale,
+          y: (mouseY - container.y) / scale
+        };
+        scale = newScale;
+        container.scale.set(scale);
+        container.x = mouseX - worldPos.x * scale;
+        container.y = mouseY - worldPos.y * scale;
+      }
+    }, { passive: false });
+
+    // HEX математика
+    const SQRT3 = Math.sqrt(3);
+    const size = 42;
+
+    const axialToPixel = (q, r) => ({
+      x: size * (SQRT3 * q + SQRT3/2 * r),
+      y: size * (1.5 * r)
+    });
+
+    const createHexPoints = (radius) => {
+      const points = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 180) * (60 * i - 30);
+        points.push(
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius
+        );
+      }
+      return points;
+    };
+
+    const HEX_PTS = createHexPoints(size);
+    const HEXES = [];
+    let selectedHex = null;
+
+    const clearMap = () => {
+      container.removeChildren();
+      HEXES.length = 0;
+      selectedHex = null;
+    };
+
+    const createHex = (q, r, labelText) => {
+      const {x, y} = axialToPixel(q, r);
+
+      const graphics = new PIXI.Graphics();
+      graphics.poly(HEX_PTS, true)
+              .fill(0x000000, 0)
+              .stroke({ color: 0xffffff, width: 1, alpha: 1 });
+
+      graphics.x = x;
+      graphics.y = y;
+      graphics.eventMode = 'static';
+      graphics.cursor = 'pointer';
+      graphics.hitArea = new PIXI.Polygon(HEX_PTS);
+      container.addChild(graphics);
+
+      const text = new PIXI.Text({
+        text: labelText || '',
+        style: {
+          fill: 0xffffff,
+          fontSize: 12,
+          fontFamily: 'system-ui, Arial',
+          fontWeight: '500'
+        }
+      });
+      text.anchor.set(0.5);
+      text.x = x;
+      text.y = y;
+      container.addChild(text);
+
+      const hexObj = { graphics, text, q, r, selected:false, data:{} };
+      HEXES.push(hexObj);
+      return hexObj;
+    };
+
+    const wireInteractions = (hexObj) => {
+      hexObj.graphics.on('pointerover', () => {
+        if (!hexObj.selected) {
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x000000, 0)
+                .stroke({ color: 0x34a2db, width: 2, alpha: 1 });
+        }
+      });
+
+      hexObj.graphics.on('pointerout', () => {
+        if (!hexObj.selected) {
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x000000, 0)
+                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
+        }
+      });
+
+      hexObj.graphics.on('pointertap', () => {
+        if (selectedHex && selectedHex !== hexObj) {
+          selectedHex.selected = false;
+          selectedHex.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x000000, 0)
+                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
+        }
+
+        if (hexObj.selected) {
+          hexObj.selected = false;
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x000000, 0)
+                .stroke({ color: 0xffffff, width: 1, alpha: 1 });
+          selectedHex = null;
+        } else {
+          hexObj.selected = true;
+          selectedHex = hexObj;
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x34a2db, 1)
+                .stroke({ color: 0xffffff, width: 2, alpha: 1 });
+
+          const payload = hexObj.data || {};
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+              { type:'container:set', payload },
+              '*'
+            );
+          }
+        }
+      });
+    };
+
+    const drawMap = (mapJson) => {
+      clearMap();
+
+      if (!mapJson || !Array.isArray(mapJson.cells)) {
+        console.warn('Ожидался формат { format:"pixi_hex", cells:[...] }');
+        return;
+      }
+
+      mapJson.cells.forEach(cell => {
+        const q = Number(cell.q) || 0;
+        const r = Number(cell.r) || 0;
+        const label = cell.label || '';
+        const hex = createHex(q, r, label);
+        hex.data = cell.data || {};
+        wireInteractions(hex);
+      });
+
+      console.log('Pixi карта отрисована, всего сот:', HEXES.length);
+    };
+
+    window.PixiViewer = {
+      setData: drawMap
+    };
+
+    window.addEventListener('message', (ev) => {
+      const msg = ev.data || {};
+      if (msg.type === 'map:pixi') {
+        drawMap(msg.payload);
+      }
+    });
+
+    console.log('Pixi viewer готов. Ждёт { type:"map:pixi", payload:{ format:"pixi_hex", cells:[...] } }');
+  })();
+  </script>
+</body>
+</html>
