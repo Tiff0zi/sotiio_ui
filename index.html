@@ -287,6 +287,15 @@
       modeButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.viewMode === mode);
       });
+    
+      // важно: сообщаем Pixi, что iframe теперь видим, нужно пересчитать размер
+      if (mode === 'pixi' && pixiFrame && pixiFrame.contentWindow) {
+        try {
+          pixiFrame.contentWindow.postMessage({ type: 'pixi:resize' }, '*');
+        } catch (e) {
+          console.warn('index: pixi:resize postMessage failed', e);
+        }
+      }
     }
 
     modeButtons.forEach(btn => {
