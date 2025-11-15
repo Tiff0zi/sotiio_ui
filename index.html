@@ -11,12 +11,13 @@
       margin: 0; 
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #ece0d1;
+      background: #1e1e1e;
+      color: #e0e0e0;
     }
     
     .layout { 
       display: grid;
-      grid-template-columns: 1fr 0px; /* Изначально правая колонка скрыта */
+      grid-template-columns: 1fr 0px;
       height: 100vh;
       position: relative;
       transition: grid-template-columns 0.3s ease;
@@ -29,7 +30,7 @@
     /* Viewer */
     #viewerWrap {
       position: relative;
-      background: #ece0d1;
+      background: #1e1e1e;
       overflow: hidden;
     }
     
@@ -51,21 +52,28 @@
     }
     
     .btn {
-      background: #ff622b;
+      background: #34a2db;
       color: #fff;
       border: none;
       padding: 10px 16px;
-      border-radius: 10px;
+      border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
       font-family: inherit;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
     }
 
-    /* Container iframe - изначально скрыт */
+    .btn:hover {
+      background: #2b8dc5;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    /* Container iframe */
     aside {
-      border-left: 1px solid rgba(0,0,0,0.08);
-      background: #ece6df;
+      border-left: 1px solid #333;
+      background: #2c2c2c;
       overflow: hidden;
       opacity: 0;
       transition: opacity 0.2s ease;
@@ -88,27 +96,34 @@
       top: 12px;
       right: 12px;
       z-index: 101;
-      background: transparent;
+      background: #333;
       border: none;
-      font-size: 24px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 18px;
       cursor: pointer;
-      color: #666;
+      color: #888;
       display: none;
+      transition: all 0.2s ease;
     }
     
     .layout.with-container .close-container {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .close-container:hover {
-      color: #333;
+      background: #444;
+      color: #fff;
     }
 
     /* Modal */
     .modal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.45);
+      background: rgba(0,0,0,0.7);
       display: none;
       align-items: center;
       justify-content: center;
@@ -123,10 +138,11 @@
     .modal-card {
       width: min(820px, 96vw);
       height: min(640px, 88vh);
-      background: #fff;
-      border-radius: 12px;
+      background: #2c2c2c;
+      border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      border: 1px solid #444;
     }
     
     #userstoryFrame {
@@ -136,28 +152,30 @@
       display: block;
     }
 
-    /* === Кофейная палитра для карты === */
+    /* === Тёмная палитра для карты === */
     :root {
-      --bg: #ece0d1;
-      --lvl0: #dbc1ac;
-      --lvl1: #967259;
-      --lvl2: #634832;
-      --lvl3: #38220f;
-      --sel: #ff622b;
+      --bg: #1e1e1e;
+      --lvl0: #2c2c2c;
+      --lvl1: #3a3a3a;
+      --lvl2: #484848;
+      --lvl3: #565656;
+      --sel: #34a2db;
     }
 
     jmnode {
-      border-radius: 10px !important;
-      border: 1px solid rgba(0,0,0,.10) !important;
-      box-shadow: 0 2px 4px rgba(0,0,0,.10) !important;
+      border-radius: 6px !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
       font-family: inherit !important;
       cursor: pointer;
+      transition: all 0.2s ease !important;
     }
 
     jmnode.jsmind-root { 
       background: var(--lvl0) !important; 
-      color: #1f1f1f !important; 
+      color: #fff !important; 
       font-size: 20px !important;
+      border: 1px solid rgba(255,255,255,0.15) !important;
     }
     
     jmnode.lvl-1 { 
@@ -180,6 +198,40 @@
       border-color: var(--sel) !important; 
       color: #fff !important; 
       outline: none !important;
+      box-shadow: 0 4px 12px rgba(52, 162, 219, 0.3) !important;
+    }
+
+    /* Стили для линий между узлами */
+    jmnode:before {
+      border-color: #444 !important;
+    }
+
+    jmnode:after {
+      border-color: #444 !important;
+    }
+
+    /* Дополнительные улучшения для тёмной темы */
+    .jmnode-wrapper {
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #2c2c2c;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #666;
     }
   </style>
 </head>
