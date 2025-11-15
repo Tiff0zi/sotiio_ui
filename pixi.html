@@ -12,9 +12,85 @@
       background:#1e1e1e;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
+
+    /* Панель палитры в правом верхнем углу */
+    #palette-panel {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 10;
+      background: rgba(15, 15, 15, 0.92);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      font-size: 11px;
+      color: #ddd;
+      backdrop-filter: blur(6px);
+    }
+
+    #palette-panel-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      margin-bottom: 4px;
+    }
+
+    .palette-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .palette-label {
+      width: 32px;
+      text-align: right;
+      color: #aaa;
+    }
+
+    .palette-color {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
+  <!-- Панель выбора цветов -->
+  <div id="palette-panel">
+    <div id="palette-panel-header">L2 palette</div>
+    <div class="palette-row">
+      <div class="palette-label">L2-1</div>
+      <input class="palette-color" type="color" data-sector="1" />
+    </div>
+    <div class="palette-row">
+      <div class="palette-label">L2-2</div>
+      <input class="palette-color" type="color" data-sector="2" />
+    </div>
+    <div class="palette-row">
+      <div class="palette-label">L2-3</div>
+      <input class="palette-color" type="color" data-sector="3" />
+    </div>
+    <div class="palette-row">
+      <div class="palette-label">L2-4</div>
+      <input class="palette-color" type="color" data-sector="4" />
+    </div>
+    <div class="palette-row">
+      <div class="palette-label">L2-5</div>
+      <input class="palette-color" type="color" data-sector="5" />
+    </div>
+    <div class="palette-row">
+      <div class="palette-label">L2-6</div>
+      <input class="palette-color" type="color" data-sector="6" />
+    </div>
+  </div>
+
   <!-- Pixi лежит в /PixiJS/pixi.min.js -->
   <script src="/PixiJS/pixi.min.js"></script>
 
@@ -37,6 +113,8 @@
 
     const container = new PIXI.Container();
     app.stage.addChild(container);
+
+    let lastCells = null; // последняя карта, чтобы пересобирать при смене палитры
 
     // ─── РЕСАЙЗ ────────────────────────────────────────────────
     function resizeApp() {
@@ -142,7 +220,7 @@
       centerHex = null;
     };
 
-    // ─── ХЕЛПЕР ПЕРЕНОСА ТЕКСТА (твои правила) ────────────────
+    // ─── ХЕЛПЕР ПЕРЕНОСА ТЕКСТА (твои правила) ─────────────
     function wrapLabel(text, maxCharsSingle = 9, maxLineLenMulti = 10, maxLines = 4) {
       const str = String(text || '').trim();
       if (!str) return '';
@@ -176,7 +254,6 @@
       for (let i = 0; i < wordCount; i++) {
         let w = words[i];
 
-        // ограничиваем само слово, если оно слишком длинное
         if (w.length > maxCharsSingle) {
           w = cutWord(w);
         }
@@ -209,7 +286,6 @@
         lines.length = maxLines;
       }
 
-      // финальная проверка: одна строка = одно длинное слово → режем по правилу 1
       for (let i = 0; i < lines.length; i++) {
         const parts = lines[i].split(/\s+/).filter(Boolean);
         if (parts.length === 1 && lines[i].length > maxCharsSingle) {
@@ -220,9 +296,9 @@
       return lines.join('\n');
     }
 
-    // ─── ЦВЕТОВАЯ ПАЛИТРА ПО L1–L4 ─────────────────────────────
+    // ─── ЦВЕТОВАЯ ПАЛИТРА L1–L4 ───────────────────────────────
 
-    // базовые цвета L2-1..L2-6 (из твоей CMYK-палитры, переведено в RGB)
+    // базовые цвета L2-1..L2-6 (их ты можешь менять)
     const L2_BASE_COLORS = {
       1: 0xd98073, // L2-1 ↖
       2: 0xffd9bf, // L2-2 ↗
@@ -231,6 +307,37 @@
       5: 0x6680cc, // L2-5 ↙
       6: 0xe64073  // L2-6 ←
     };
+
+    function intToHexColor(intVal) {
+      let s = intVal.toString(16);
+      while (s.length < 6) s = '0' + s;
+      return '#' + s;
+    }
+
+    function setupPaletteUI() {
+      const panel = document.getElementById('palette-panel');
+      if (!panel) return;
+
+      const inputs = panel.querySelectorAll('input.palette-color');
+      inputs.forEach(input => {
+        const sector = Number(input.dataset.sector);
+        const base = L2_BASE_COLORS[sector] ?? 0x000000;
+        input.value = intToHexColor(base);
+
+        input.addEventListener('input', (e) => {
+          const val = e.target.value; // "#rrggbb"
+          const intVal = parseInt(val.slice(1), 16);
+          if (!Number.isNaN(intVal)) {
+            L2_BASE_COLORS[sector] = intVal;
+            if (lastCells && Array.isArray(lastCells)) {
+              buildFromCells(lastCells);
+            }
+          }
+        });
+      });
+    }
+
+    setupPaletteUI();
 
     function parseLevelVector(cell) {
       const id = (cell && cell.data && cell.data.id) || cell.id || '';
@@ -245,7 +352,6 @@
         if (m[3]) order = parseInt(m[3], 10);
       }
 
-      // fallback по радиусу, если id нет
       if (!level) {
         const q = Number(cell.q) || 0;
         const r = Number(cell.r) || 0;
@@ -263,7 +369,6 @@
     function getFillStyle(cell) {
       const { level, sector, order } = parseLevelVector(cell);
 
-      // L1 — центр, оставляем оранжевый
       if (level === 1) {
         return { color: 0xff622b, alpha: 1 };
       }
@@ -271,29 +376,24 @@
       const baseColor = (sector && L2_BASE_COLORS[sector]) ? L2_BASE_COLORS[sector] : 0x000000;
 
       if (!sector) {
-        // если не смогли определить сектор — пусть будет прозрачный
         return { color: baseColor, alpha: 0 };
       }
 
       if (level === 2) {
-        // L2 — база, лёгкая заливка
         return { color: baseColor, alpha: 0.15 };
       }
 
       if (level === 3) {
-        // L3 — те же цвета, но плотнее
         return { color: baseColor, alpha: 0.5 };
       }
 
       if (level >= 4) {
-        // L4 — чередующаяся прозрачность
         const idx = order || 1;
         const isOdd = idx % 2 === 1;
         const alpha = isOdd ? 0.2 : 0.1;
         return { color: baseColor, alpha };
       }
 
-      // дефолт
       return { color: baseColor, alpha: 0.3 };
     }
 
@@ -453,6 +553,8 @@
         return;
       }
 
+      lastCells = cells.slice(); // запоминаем для пересборки при смене палитры
+
       console.log('Pixi: строим карту из', cells.length, 'ячеек');
 
       cells.forEach((cell, idx) => {
@@ -461,7 +563,6 @@
 
         if (idx === 0) {
           centerHex = hex;
-          // центр уже раскрашен по getFillStyle(L1) — оранжевый
         } else {
           wireInteractions(hex);
         }
