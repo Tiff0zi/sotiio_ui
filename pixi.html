@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <!-- тот же путь, что и в hex_test -->
+  <!-- Путь как в репо: /PixiJS/pixi.min.js рядом с html -->
   <script src="./PixiJS/pixi.min.js"></script>
 
   <script>
@@ -38,11 +38,11 @@
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
-    // Начальная позиция - центрируем контейнер
+    // центрируем контейнер
     container.x = app.screen.width / 2;
     container.y = app.screen.height / 2;
 
-    // --- Пан/Зум (1:1 как в hex_test) ---
+    // ─── Пан/зум (как в hex_test) ──────────────────────────────
     let isDragging = false;
     let lastMousePosition = null;
     let scale = 1;
@@ -104,7 +104,7 @@
       }
     }, { passive: false });
 
-    // --- HEX математика (1:1 с hex_test) ---
+    // ─── HEX геометрия (как в hex_test) ────────────────────────
     const SQRT3 = Math.sqrt(3);
     const size = 42;
 
@@ -127,10 +127,9 @@
 
     const HEX_PTS = createHexPoints(size);
 
-    // --- Состояние карты ---
     const HEXES = [];
     let selectedHex = null;
-    let centerHex = null; // будем делать «оранжевым центром» первый узел
+    let centerHex = null;
 
     const clearMap = () => {
       container.removeChildren();
@@ -139,7 +138,7 @@
       centerHex = null;
     };
 
-    // Создание одной соты (ровно как в hex_test)
+    // создание одной соты
     const createHex = (q, r, labelText) => {
       const { x, y } = axialToPixel(q, r);
 
@@ -180,10 +179,9 @@
       };
     };
 
-    // Взаимодействия (копия из hex_test, плюс отправка данных наверх)
+    // ховеры/клики + postMessage в container.html
     const wireInteractions = (hexObj) => {
-      // центральную «оранжевую» оставляем без hover
-      if (hexObj === centerHex) return;
+      if (hexObj === centerHex) return; // центральную не трогаем
 
       hexObj.graphics.on('pointerover', () => {
         if (!hexObj.selected) {
@@ -227,7 +225,6 @@
                 .fill(0x34a2db, 1)
                 .stroke({ color: 0xffffff, width: 2, alpha: 1 });
 
-          // отправляем данные выбранной соты в container.html
           if (window.parent && window.parent !== window) {
             window.parent.postMessage(
               { type: 'container:set', payload: hexObj.data || {} },
@@ -238,28 +235,24 @@
       });
     };
 
-    // --- Нормализация входного объекта в список cells ---
+    // ─── Нормализация входного объекта в {format, cells[]} ─────
     function normalizePixiPayload(raw) {
       if (!raw) return { format: 'pixi_hex', cells: [] };
 
-      // если уже нормальный формат
       if (raw.format === 'pixi_hex' && Array.isArray(raw.cells)) {
         return raw;
       }
 
       let obj = raw;
 
-      // n8n часто заворачивает в массив
       if (Array.isArray(obj)) {
         obj = obj[0];
       }
 
-      // твой кейс: { "": { "L1": {...}, "L2-1": {...}, ... } }
       if (obj && typeof obj === 'object' && '' in obj && typeof obj[''] === 'object') {
         obj = obj[''];
       }
 
-      // словарь id -> { q, r, label, data? }
       if (obj && typeof obj === 'object' && !Array.isArray(obj) && !obj.cells) {
         const cells = Object.values(obj).map((cell) => {
           if (!cell || typeof cell !== 'object') return null;
@@ -285,48 +278,47 @@
       return raw;
     }
 
-    // --- Построение карты из cells ---
+    // ─── Построение карты из cells ─────────────────────────────
     function buildFromCells(cells) {
       clearMap();
+
       if (!cells || !cells.length) {
         console.warn('Pixi: пустой список cells');
         return;
       }
 
-      // центрируем кластер по среднему q/r, чтобы он был вокруг (0,0)
-      let sumQ = 0, sumR = 0;
-      for (const c of cells) {
-        sumQ += Number(c.q) || 0;
-        sumR += Number(c.r) || 0;
-      }
-      const avgQ = sumQ / cells.length;
-      const avgR = sumR / cells.length;
+      console.log('Pixi: строим карту из', cells.length, 'ячеек');
 
+      // рисуем по q/r как есть
       cells.forEach((cell, idx) => {
-        const q = (Number(cell.q) || 0) - avgQ;
-        const r = (Number(cell.r) || 0) - avgR;
+        const q = Number(cell.q) || 0;
+        const r = Number(cell.r) || 0;
         const label = cell.label || '';
         const hex = createHex(q, r, label);
-        hex.data = cell.data || cell;
 
+        hex.data = cell.data || cell;
         HEXES.push(hex);
 
         if (idx === 0) {
-          // делаем первый узел «центральным» — оранжевая заливка, как в hex_test
+          // первый – центральный оранжевый
           centerHex = hex;
           hex.graphics.clear()
-              .poly(HEX_PTS, true)
-              .fill(0xff622b, 1)
-              .stroke({ color: 0xffffff, width: 1, alpha: 1 });
+            .poly(HEX_PTS, true)
+            .fill(0xff622b, 1)
+            .stroke({ color: 0xffffff, width: 1, alpha: 1 });
         } else {
           wireInteractions(hex);
         }
       });
 
+      // debug-маяк в геометрическом центре (0,0)
+      const dbg = new PIXI.Graphics();
+      dbg.rect(-20, -20, 40, 40).fill(0xff0000, 1);
+      container.addChild(dbg);
+
       console.log('Pixi карта отрисована, всего сот:', HEXES.length);
     }
 
-    // --- Публичный API для index.html ---
     function drawMap(raw) {
       console.log('Pixi: raw payload', raw);
       const norm = normalizePixiPayload(raw);
@@ -334,9 +326,9 @@
       buildFromCells(norm.cells || []);
     }
 
+    // ─── API и приём сообщений от index.html ───────────────────
     window.PixiViewer = { setData: drawMap };
 
-    // --- принимаем карту из index.html ---
     window.addEventListener('message', (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'map:pixi') {
