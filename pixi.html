@@ -13,117 +13,141 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
-    /* Улучшенная панель палитры */
+    /* Панель палитры в виде гексагона */
     #palette-panel {
       position: fixed;
-      top: 16px;
-      right: 16px;
+      top: 20px;
+      right: 20px;
       z-index: 10;
-      background: rgba(30, 30, 30, 0.95);
-      border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      font-size: 13px;
-      color: #eee;
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.15);
-      min-width: 160px;
-    }
-
-    #palette-panel-header {
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #ccc;
-      margin-bottom: 8px;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    .palette-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .palette-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .palette-color {
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 10px;
+      width: 140px;
+      height: 160px;
+      transition: all 0.3s ease;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
     }
 
-    .palette-color:hover {
-      transform: scale(1.12);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    #palette-panel.collapsed {
+      width: 60px;
+      height: 70px;
     }
 
-    .palette-label {
-      font-size: 11px;
-      color: #aaa;
-      text-align: center;
-      font-weight: 500;
+    #palette-panel.collapsed .palette-hexagon {
+      transform: scale(0.4);
     }
 
-    .palette-divider {
-      height: 1px;
-      background: rgba(255,255,255,0.1);
-      margin: 4px 0;
+    #palette-panel.collapsed .palette-center {
+      transform: scale(1.2);
+    }
+
+    .palette-hexagon {
+      position: relative;
       width: 100%;
+      height: 100%;
+      transition: all 0.3s ease;
+    }
+
+    .palette-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50px;
+      height: 50px;
+      z-index: 3;
+      transition: all 0.3s ease;
+    }
+
+    .palette-center input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: all 0.2s ease;
+    }
+
+    .palette-center input:hover {
+      transform: scale(1.1);
+    }
+
+    .palette-sector {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      z-index: 2;
+    }
+
+    .palette-sector input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+    }
+
+    .palette-sector input:hover {
+      transform: scale(1.15);
+    }
+
+    /* Расположение секторов по кругу */
+    .palette-sector[data-sector="1"] { top: 10px; left: 50px; }  /* ↖ */
+    .palette-sector[data-sector="2"] { top: 10px; right: 50px; } /* ↗ */
+    .palette-sector[data-sector="3"] { top: 60px; right: 10px; } /* → */
+    .palette-sector[data-sector="4"] { bottom: 10px; right: 50px; } /* ↘ */
+    .palette-sector[data-sector="5"] { bottom: 10px; left: 50px; }  /* ↙ */
+    .palette-sector[data-sector="6"] { top: 60px; left: 10px; }  /* ← */
+
+    .palette-toggle {
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 30, 30, 0.9);
+      color: #aaa;
+      border: none;
+      border-radius: 12px;
+      padding: 4px 12px;
+      font-size: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+
+    .palette-toggle:hover {
+      background: rgba(40, 40, 40, 0.95);
+      color: #fff;
     }
   </style>
 </head>
 <body>
-  <!-- Обновленная панель выбора цветов -->
-  <div id="palette-panel">
-    <div id="palette-panel-header">Color Palette</div>
-    
-    <div class="palette-item">
-      <input class="palette-color" type="color" data-sector="0" title="Center L1" />
-      <div class="palette-label">Center L1</div>
-    </div>
-    
-    <div class="palette-divider"></div>
-    
-    <div class="palette-grid">
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="1" title="L2-1" />
-        <div class="palette-label">L2-1</div>
+  <!-- Панель палитры в виде гексагона -->
+  <div id="palette-panel" class="collapsed">
+    <div class="palette-hexagon">
+      <div class="palette-center">
+        <input class="palette-color" type="color" data-sector="0" title="Center L1" />
       </div>
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="2" title="L2-2" />
-        <div class="palette-label">L2-2</div>
+      <div class="palette-sector" data-sector="1">
+        <input class="palette-color" type="color" data-sector="1" title="L2-1 ↖" />
       </div>
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="3" title="L2-3" />
-        <div class="palette-label">L2-3</div>
+      <div class="palette-sector" data-sector="2">
+        <input class="palette-color" type="color" data-sector="2" title="L2-2 ↗" />
       </div>
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="4" title="L2-4" />
-        <div class="palette-label">L2-4</div>
+      <div class="palette-sector" data-sector="3">
+        <input class="palette-color" type="color" data-sector="3" title="L2-3 →" />
       </div>
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="5" title="L2-5" />
-        <div class="palette-label">L2-5</div>
+      <div class="palette-sector" data-sector="4">
+        <input class="palette-color" type="color" data-sector="4" title="L2-4 ↘" />
       </div>
-      <div class="palette-item">
-        <input class="palette-color" type="color" data-sector="6" title="L2-6" />
-        <div class="palette-label">L2-6</div>
+      <div class="palette-sector" data-sector="5">
+        <input class="palette-color" type="color" data-sector="5" title="L2-5 ↙" />
+      </div>
+      <div class="palette-sector" data-sector="6">
+        <input class="palette-color" type="color" data-sector="6" title="L2-6 ←" />
       </div>
     </div>
+    <button class="palette-toggle">•••</button>
   </div>
 
   <!-- Pixi лежит в /PixiJS/pixi.min.js -->
@@ -368,6 +392,27 @@
           }
         });
       });
+
+      // Toggle для панели палитры
+      const palettePanel = document.getElementById('palette-panel');
+      const toggleButton = document.querySelector('.palette-toggle');
+      
+      toggleButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        palettePanel.classList.toggle('collapsed');
+      });
+
+      // Закрытие панели при клике вне её
+      document.addEventListener('click', (e) => {
+        if (!palettePanel.contains(e.target)) {
+          palettePanel.classList.add('collapsed');
+        }
+      });
+
+      // Предотвращение закрытия при клике на саму панель
+      palettePanel.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
     }
 
     setupPaletteUI();
@@ -404,13 +449,13 @@
 
       // Центральная сота (L1)
       if (level === 1) {
-        return { color: BASE_COLORS[0], alpha: 0 }; // alpha = 0
+        return { color: BASE_COLORS[0], alpha: 1 }; // alpha = 1
       }
 
       // Второй уровень (L2) - радиальный
       if (level === 2) {
         const baseColor = (sector && BASE_COLORS[sector]) ? BASE_COLORS[sector] : 0x000000;
-        return { color: baseColor, alpha: 0 }; // alpha = 0
+        return { color: baseColor, alpha: 1 }; // alpha = 1
       }
 
       const baseColor = (sector && BASE_COLORS[sector]) ? BASE_COLORS[sector] : 0x000000;
