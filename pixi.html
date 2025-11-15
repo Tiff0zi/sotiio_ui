@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <!-- Путь как в репо: /PixiJS/pixi.min.js рядом с root -->
+  <!-- Pixi лежит в /PixiJS/pixi.min.js -->
   <script src="/PixiJS/pixi.min.js"></script>
 
   <script>
@@ -27,7 +27,7 @@
 
     const app = new PIXI.Application();
     await app.init({
-      width: 1,       // стартуем с 1x1, потом ресайзим
+      width: 1,
       height: 1,
       background: '#1e1e1e',
       antialias: true,
@@ -38,27 +38,22 @@
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
-    // ─── РЕСАЙЗ: подгоняем под реальный размер iframe ─────────
+    // ─── РЕСАЙЗ ────────────────────────────────────────────────
     function resizeApp() {
       const w = document.documentElement.clientWidth || window.innerWidth || 800;
       const h = document.documentElement.clientHeight || window.innerHeight || 600;
 
       app.renderer.resize(w, h);
-
-      // центрируем контейнер после ресайза
       container.x = w / 2;
       container.y = h / 2;
 
       console.log('Pixi: resizeApp ->', w, 'x', h);
     }
 
-    // на всякий случай при обычном ресайзе окна
     window.addEventListener('resize', resizeApp);
-
-    // сделаем первый ресайз чуть позже (когда iframe уже мог отрисоваться)
     setTimeout(resizeApp, 200);
 
-    // ─── Пан/зум (как в hex_test) ──────────────────────────────
+    // ─── Пан/зум ───────────────────────────────────────────────
     let isDragging = false;
     let lastMousePosition = null;
     let scale = 1;
@@ -85,20 +80,16 @@
 
     app.stage.on('pointermove', (event) => {
       if (!isDragging || !lastMousePosition) return;
-
       const newMousePosition = event.global.clone();
       const deltaX = newMousePosition.x - lastMousePosition.x;
       const deltaY = newMousePosition.y - lastMousePosition.y;
-
       container.x += deltaX;
       container.y += deltaY;
-
       lastMousePosition = newMousePosition;
     });
 
     app.canvas.addEventListener('wheel', (event) => {
       event.preventDefault();
-
       const zoomSpeed = 0.1;
       const zoomFactor = event.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
       const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
@@ -106,21 +97,18 @@
       if (newScale !== scale) {
         const mouseX = event.clientX;
         const mouseY = event.clientY;
-
         const worldPos = {
           x: (mouseX - container.x) / scale,
           y: (mouseY - container.y) / scale
         };
-
         scale = newScale;
         container.scale.set(scale);
-
         container.x = mouseX - worldPos.x * scale;
         container.y = mouseY - worldPos.y * scale;
       }
     }, { passive: false });
 
-    // ─── HEX геометрия (как в hex_test) ────────────────────────
+    // ─── HEX-геометрия ─────────────────────────────────────────
     const SQRT3 = Math.sqrt(3);
     const size = 42;
 
@@ -154,12 +142,61 @@
       centerHex = null;
     };
 
-    // создание одной соты
+    // ─── ХЕЛПЕР ПЕРЕНОСА ТЕКСТА ────────────────────────────────
+    function wrapLabel(text, maxCharsPerLine = 14, maxLines = 3) {
+      const str = String(text || '').trim();
+      if (!str) return '';
+
+      const words = str.split(/\s+/);
+      const lines = [];
+      let current = '';
+
+      for (const word of words) {
+        const w = word.trim();
+        if (!w) continue;
+
+        const candidate = current ? current + ' ' + w : w;
+
+        if (candidate.length <= maxCharsPerLine) {
+          current = candidate;
+        } else {
+          if (current) {
+            lines.push(current);
+          }
+          if (w.length > maxCharsPerLine) {
+            // слово само по себе длиннее лимита — режем
+            lines.push(w.slice(0, maxCharsPerLine - 1) + '…');
+          } else {
+            current = w;
+          }
+        }
+
+        if (lines.length >= maxLines) break;
+      }
+
+      if (lines.length < maxLines && current) {
+        lines.push(current);
+      }
+
+      // если всё равно больше maxLines — режем
+      if (lines.length > maxLines) {
+        lines.length = maxLines;
+      }
+
+      // проверим последнюю строку на длину
+      const lastIdx = lines.length - 1;
+      if (lastIdx >= 0 && lines[lastIdx].length > maxCharsPerLine) {
+        lines[lastIdx] = lines[lastIdx].slice(0, maxCharsPerLine - 1) + '…';
+      }
+
+      return lines.join('\n');
+    }
+
+    // ─── создание одной соты ───────────────────────────────────
     const createHex = (q, r, labelText) => {
       const { x, y } = axialToPixel(q, r);
 
       const graphics = new PIXI.Graphics();
-
       graphics.poly(HEX_PTS, true)
               .fill(0x000000, 0)
               .stroke({ color: 0xffffff, width: 1, alpha: 1 });
@@ -172,13 +209,15 @@
 
       container.addChild(graphics);
 
+      const wrapped = wrapLabel(labelText, 14, 3); // можно поиграть цифрами
       const text = new PIXI.Text({
-        text: labelText || '',
+        text: wrapped,
         style: {
           fill: 0xffffff,
-          fontSize: 12,
+          fontSize: 11,
           fontFamily: 'system-ui, Arial',
-          fontWeight: '500'
+          fontWeight: '500',
+          align: 'center'
         }
       });
       text.anchor.set(0.5);
@@ -251,7 +290,7 @@
       });
     };
 
-    // ─── Нормализация входного объекта в {format, cells[]} ─────
+    // ─── нормализация payload в {format, cells[]} ──────────────
     function normalizePixiPayload(raw) {
       if (!raw) return { format: 'pixi_hex', cells: [] };
 
@@ -294,7 +333,7 @@
       return raw;
     }
 
-    // ─── Построение карты из cells ─────────────────────────────
+    // ─── построение карты ──────────────────────────────────────
     function buildFromCells(cells) {
       clearMap();
 
@@ -324,6 +363,7 @@
           wireInteractions(hex);
         }
       });
+
       console.log('Pixi карта отрисована, всего сот:', HEXES.length);
     }
 
@@ -331,7 +371,7 @@
       console.log('Pixi: raw payload', raw);
       const norm = normalizePixiPayload(raw);
       console.log('Pixi: normalized payload', norm);
-      resizeApp();           // на всякий случай ещё раз перед отрисовкой
+      resizeApp();
       buildFromCells(norm.cells || []);
     }
 
