@@ -8,15 +8,16 @@
       height: 100%;
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #ece6df;
+      background: #1e1e1e;
+      color: #f5f5f5;
       overflow: hidden;
     }
     
     #drawer {
       height: 100vh;
       width: 100%;
-      background: #ece6df;
-      color: #131313;
+      background: #222222;
+      color: #f5f5f5;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -24,8 +25,8 @@
     
     .dw-tabs {
       display: flex;
-      background: #f7f7f7;
-      border-bottom: 1px solid #eee;
+      background: #262626;
+      border-bottom: 1px solid #333;
     }
     
     .dw-tab {
@@ -36,21 +37,23 @@
       border: 0;
       background: transparent;
       font-weight: 500;
-      color: #666;
+      color: #a3a3a3;
       border-bottom: 2px solid transparent;
       font-family: inherit;
+      font-size: 13px;
     }
     
     .dw-tab.active {
-      background: #ece6df;
-      border-bottom: 2px solid #ff622b;
-      color: #111;
+      background: #262626;
+      border-bottom: 2px solid #34a2db;
+      color: #f5f5f5;
     }
     
     .dw-body {
       padding: 12px 16px;
       overflow: auto;
       height: 100%;
+      background: #222222;
     }
     
     .tab-content {
@@ -64,19 +67,20 @@
     pre {
       margin: 0;
       padding: 12px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
+      background: #181818;
+      border: 1px solid #333;
       border-radius: 10px;
       white-space: pre-wrap;
       word-break: break-word;
       font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+      color: #e5e5e5;
     }
     
     table.meta {
       width: 100%;
       border-collapse: collapse;
-      background: #fff;
-      border: 1px solid #e5e7eb;
+      background: #181818;
+      border: 1px solid #333;
       border-radius: 10px;
       overflow: hidden;
       margin-bottom: 12px;
@@ -84,20 +88,24 @@
     
     table.meta th, table.meta td {
       padding: 10px 12px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
+      border-bottom: 1px solid #333;
+      font-size: 13px;
     }
     
     table.meta th {
       width: 30%;
-      background: #fafafa;
+      background: #202020;
       text-align: left;
-      color: #444;
+      color: #d4d4d4;
+    }
+    
+    table.meta td {
+      color: #f5f5f5;
     }
     
     .wiki-item {
-      background: #fff;
-      border: 1px solid #e5e7eb;
+      background: #181818;
+      border: 1px solid #333;
       border-radius: 10px;
       padding: 10px 12px;
       margin: 0 0 10px;
@@ -105,20 +113,21 @@
     
     .wiki-item h3 {
       margin: 0 0 6px;
-      font-size: 15px;
-      color: #222;
+      font-size: 14px;
+      color: #f5f5f5;
     }
     
     .wiki-item div {
-      font-size: 14px;
-      color: #333;
+      font-size: 13px;
+      color: #d4d4d4;
       line-height: 1.4;
     }
     
     .empty {
-      color: #777;
+      color: #9ca3af;
       font-style: italic;
       padding: 16px 0;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -168,33 +177,72 @@
         .replaceAll("'","&#39;");
     }
 
-    function renderMeta(nodeLike){
+    // Новый единый формат payload:
+    // { map_id, node_id, label, meta, raw, meta_error? }
+    function extractCore(nodeLike){
+      const d = nodeLike && typeof nodeLike === 'object' ? nodeLike : {};
+
+      const map_id =
+        d.map_id ??
+        (d.data && d.data.map_id) ??
+        null;
+
+      const node_id =
+        d.node_id ??
+        d.id ??
+        (d.data && d.data.data && d.data.data.node_id) ??
+        (d.data && d.data.node_id) ??
+        null;
+
+      const label =
+        d.label ??
+        d.topic ??
+        (d.data && d.data.data && d.data.data.label) ??
+        (d.data && d.data.label) ??
+        null;
+
+      const meta =
+        d.meta ??
+        (d.raw && d.raw.meta) ??
+        (d.data && d.data.data && d.data.data.meta) ??
+        (d.data && d.data.meta) ??
+        null;
+
+      const raw = d.raw != null ? d.raw : d;
+
+      return { map_id, node_id, label, meta, raw, meta_error: d.meta_error };
+    }
+
+    function renderMeta(core){
       const box = document.getElementById('tab-meta');
-      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+
       const rows = [
-        ['ID', d.node_id || d.id || '—'],
-        ['Название', d.label || d.topic || '—'],
-        ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой':'Дочерний') || '—'],
+        ['Map ID', core.map_id || '—'],
+        ['ID', core.node_id || '—'],
+        ['Название', core.label || '—'],
       ];
-      
-      const meta = (d.meta && typeof d.meta==='object') ? d.meta : {};
-      const pre = JSON.stringify(meta, null, 2);
-      
+
+      const pre = core.meta ? JSON.stringify(core.meta, null, 2) : '{}';
+
+      const metaErrorBlock = core.meta_error
+        ? `<div class="empty">Ошибка загрузки meta: ${escapeHtml(core.meta_error)}</div>`
+        : '';
+
       box.innerHTML = `
         <table class="meta">
           <tbody>
-            ${rows.map(r=>`<tr><th>${r[0]}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
+            ${rows.map(r=>`<tr><th>${escapeHtml(r[0])}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
           </tbody>
         </table>
-        <div class="empty">Мета-данные</div>
+        ${metaErrorBlock}
+        <div class="empty">Мета-данные (сырые)</div>
         <pre>${escapeHtml(pre)}</pre>
       `;
     }
 
-    function renderWiki(nodeLike){
+    function renderWiki(core){
       const box = document.getElementById('tab-wiki');
-      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
-      const meta = d.meta;
+      const meta = core.meta;
       
       if(!meta || typeof meta!=='object'){ 
         box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>'; 
@@ -229,21 +277,29 @@
       `).join('');
     }
 
-    function renderRaw(nodeLike){
+    function renderLinks(core){
+      const box = document.getElementById('tab-links');
+      // Пока нет структуры ссылок — просто заглушка
+      box.innerHTML = '<div class="empty">Для этого узла нет информации Links.</div>';
+    }
+
+    function renderRaw(raw){
       const pre = document.getElementById('raw-pre');
       let txt = 'null';
       try{ 
-        txt = JSON.stringify(nodeLike??null, null, 2);
+        txt = JSON.stringify(raw??null, null, 2);
       }catch(e){
-        txt = String(nodeLike);
+        txt = String(raw);
       }
       pre.textContent = txt;
     }
 
     function setData(nodeLike){ 
-      renderMeta(nodeLike); 
-      renderWiki(nodeLike); 
-      renderRaw(nodeLike); 
+      const core = extractCore(nodeLike);
+      renderMeta(core); 
+      renderWiki(core); 
+      renderLinks(core);
+      renderRaw(core.raw); 
     }
 
     // Связь с index.html
