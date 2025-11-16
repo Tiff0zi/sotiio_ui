@@ -8,16 +8,16 @@
       height: 100%;
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #1e1e1e;
-      color: #f5f5f5;
+      background: #2c2c2c;
+      color: #e0e0e0;
       overflow: hidden;
     }
     
     #drawer {
       height: 100vh;
       width: 100%;
-      background: #222222;
-      color: #f5f5f5;
+      background: #2c2c2c;
+      color: #e0e0e0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -25,8 +25,8 @@
     
     .dw-tabs {
       display: flex;
-      background: #262626;
-      border-bottom: 1px solid #333;
+      background: #3a3a3a;
+      border-bottom: 1px solid #444;
     }
     
     .dw-tab {
@@ -37,23 +37,28 @@
       border: 0;
       background: transparent;
       font-weight: 500;
-      color: #a3a3a3;
+      color: #bbb;
       border-bottom: 2px solid transparent;
       font-family: inherit;
-      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    
+    .dw-tab:hover {
+      background: #444;
+      color: #fff;
     }
     
     .dw-tab.active {
-      background: #262626;
+      background: #2c2c2c;
       border-bottom: 2px solid #34a2db;
-      color: #f5f5f5;
+      color: #fff;
     }
     
     .dw-body {
-      padding: 12px 16px;
+      padding: 16px;
       overflow: auto;
       height: 100%;
-      background: #222222;
+      background: #2c2c2c;
     }
     
     .tab-content {
@@ -66,68 +71,86 @@
     
     pre {
       margin: 0;
-      padding: 12px;
-      background: #181818;
-      border: 1px solid #333;
-      border-radius: 10px;
+      padding: 16px;
+      background: #3a3a3a;
+      border: 1px solid #444;
+      border-radius: 8px;
       white-space: pre-wrap;
       word-break: break-word;
-      font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
-      color: #e5e5e5;
+      font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+      color: #e0e0e0;
     }
     
     table.meta {
       width: 100%;
       border-collapse: collapse;
-      background: #181818;
-      border: 1px solid #333;
-      border-radius: 10px;
+      background: #3a3a3a;
+      border: 1px solid #444;
+      border-radius: 8px;
       overflow: hidden;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     
     table.meta th, table.meta td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #333;
-      font-size: 13px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #444;
+      font-size: 14px;
     }
     
     table.meta th {
       width: 30%;
-      background: #202020;
+      background: #444;
       text-align: left;
-      color: #d4d4d4;
+      color: #e0e0e0;
+      font-weight: 600;
     }
     
     table.meta td {
-      color: #f5f5f5;
+      color: #e0e0e0;
+      background: #3a3a3a;
     }
     
     .wiki-item {
-      background: #181818;
-      border: 1px solid #333;
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin: 0 0 10px;
+      background: #3a3a3a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 0 0 12px;
     }
     
     .wiki-item h3 {
-      margin: 0 0 6px;
-      font-size: 14px;
-      color: #f5f5f5;
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #fff;
+      font-weight: 600;
     }
     
     .wiki-item div {
-      font-size: 13px;
-      color: #d4d4d4;
-      line-height: 1.4;
+      font-size: 14px;
+      color: #e0e0e0;
+      line-height: 1.5;
     }
     
     .empty {
-      color: #9ca3af;
+      color: #888;
       font-style: italic;
-      padding: 16px 0;
-      font-size: 13px;
+      padding: 20px 0;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #3a3a3a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #666;
     }
   </style>
 </head>
@@ -157,7 +180,6 @@
 
   <script>
   (function(){
-    // Вкладки
     document.querySelectorAll('.dw-tab').forEach(t=>{
       t.addEventListener('click',()=>{
         const id = t.getAttribute('data-tab');
@@ -177,72 +199,33 @@
         .replaceAll("'","&#39;");
     }
 
-    // Новый единый формат payload:
-    // { map_id, node_id, label, meta, raw, meta_error? }
-    function extractCore(nodeLike){
-      const d = nodeLike && typeof nodeLike === 'object' ? nodeLike : {};
-
-      const map_id =
-        d.map_id ??
-        (d.data && d.data.map_id) ??
-        null;
-
-      const node_id =
-        d.node_id ??
-        d.id ??
-        (d.data && d.data.data && d.data.data.node_id) ??
-        (d.data && d.data.node_id) ??
-        null;
-
-      const label =
-        d.label ??
-        d.topic ??
-        (d.data && d.data.data && d.data.data.label) ??
-        (d.data && d.data.label) ??
-        null;
-
-      const meta =
-        d.meta ??
-        (d.raw && d.raw.meta) ??
-        (d.data && d.data.data && d.data.data.meta) ??
-        (d.data && d.data.meta) ??
-        null;
-
-      const raw = d.raw != null ? d.raw : d;
-
-      return { map_id, node_id, label, meta, raw, meta_error: d.meta_error };
-    }
-
-    function renderMeta(core){
+    function renderMeta(nodeLike){
       const box = document.getElementById('tab-meta');
-
+      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
       const rows = [
-        ['Map ID', core.map_id || '—'],
-        ['ID', core.node_id || '—'],
-        ['Название', core.label || '—'],
+        ['ID', d.node_id || d.id || '—'],
+        ['Название', d.label || d.topic || '—'],
+        ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой':'Дочерний') || '—'],
       ];
-
-      const pre = core.meta ? JSON.stringify(core.meta, null, 2) : '{}';
-
-      const metaErrorBlock = core.meta_error
-        ? `<div class="empty">Ошибка загрузки meta: ${escapeHtml(core.meta_error)}</div>`
-        : '';
-
+      
+      const meta = (d.meta && typeof d.meta==='object') ? d.meta : {};
+      const pre = JSON.stringify(meta, null, 2);
+      
       box.innerHTML = `
         <table class="meta">
           <tbody>
-            ${rows.map(r=>`<tr><th>${escapeHtml(r[0])}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
+            ${rows.map(r=>`<tr><th>${r[0]}</th><td>${escapeHtml(r[1])}</td></tr>`).join('')}
           </tbody>
         </table>
-        ${metaErrorBlock}
-        <div class="empty">Мета-данные (сырые)</div>
+        <div class="empty">Мета-данные</div>
         <pre>${escapeHtml(pre)}</pre>
       `;
     }
 
-    function renderWiki(core){
+    function renderWiki(nodeLike){
       const box = document.getElementById('tab-wiki');
-      const meta = core.meta;
+      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const meta = d.meta;
       
       if(!meta || typeof meta!=='object'){ 
         box.innerHTML='<div class="empty">Для этого узла нет информации Wiki.</div>'; 
@@ -277,38 +260,28 @@
       `).join('');
     }
 
-    function renderLinks(core){
-      const box = document.getElementById('tab-links');
-      // Пока нет структуры ссылок — просто заглушка
-      box.innerHTML = '<div class="empty">Для этого узла нет информации Links.</div>';
-    }
-
-    function renderRaw(raw){
+    function renderRaw(nodeLike){
       const pre = document.getElementById('raw-pre');
       let txt = 'null';
       try{ 
-        txt = JSON.stringify(raw??null, null, 2);
+        txt = JSON.stringify(nodeLike??null, null, 2);
       }catch(e){
-        txt = String(raw);
+        txt = String(nodeLike);
       }
       pre.textContent = txt;
     }
 
     function setData(nodeLike){ 
-      const core = extractCore(nodeLike);
-      renderMeta(core); 
-      renderWiki(core); 
-      renderLinks(core);
-      renderRaw(core.raw); 
+      renderMeta(nodeLike); 
+      renderWiki(nodeLike); 
+      renderRaw(nodeLike); 
     }
 
-    // Связь с index.html
     window.addEventListener('message', (ev)=>{ 
       const msg = ev.data || {}; 
       if(msg.type === 'container:set') setData(msg.payload); 
     });
 
-    // Ручной API
     window.ContainerAPI = { setData };
   })();
   </script>
