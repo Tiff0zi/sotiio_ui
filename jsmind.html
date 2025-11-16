@@ -163,7 +163,7 @@
       window.addEventListener('resize', () => jm.resize());
     }
 
-    // Клик по узлам -> отправляем данные родителю
+    // Клик по узлам -> отправляем нормализованный payload родителю
     document.getElementById('jsmind_container').addEventListener('click', (e)=>{
       const el = e.target.closest('.jmnode');
       if (!el) {
@@ -184,10 +184,20 @@
       el.classList.add('selected');
       selectedNodeEl = el;
 
-      const payload = (node.data && node.data.data) || node.data || {};
+      const base = (node.data && node.data.data) || node.data || {};
+      const node_id = base.node_id || base.id || node.id;
+      const label = base.label || base.topic || node.topic || '';
+
       if (window.parent && window.parent !== window) {
         window.parent.postMessage(
-          { type:'container:set', payload },
+          {
+            type:'node:click',
+            payload: {
+              node_id,
+              label,
+              raw: base
+            }
+          },
           '*'
         );
       }
