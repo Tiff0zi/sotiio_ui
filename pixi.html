@@ -13,6 +13,22 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
+    /* ── Радиальное свечение под картой ── */
+    #pixi-background-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: radial-gradient(
+        circle at center,
+        rgba(255,255,255,0.12) 0%,
+        rgba(255,255,255,0.04) 25%,
+        rgba(0,0,0,0.90) 70%,
+        rgba(0,0,0,1.0) 100%
+      );
+      transition: background-position 0.2s ease;
+    }
+
      #palette-panel {
       position: fixed;
       top: 20px;
@@ -187,6 +203,9 @@
   </style>
 </head>
 <body>
+  <!-- Фон со свечением -->
+  <div id="pixi-background-glow"></div>
+
   <div id="palette-panel" class="collapsed">
     <div class="palette-hexagon">
       <!-- 1 (↖) -->
@@ -267,6 +286,10 @@
     });
     document.body.appendChild(app.canvas);
 
+    // Canvas выше фона со свечением
+    app.canvas.style.position = 'relative';
+    app.canvas.style.zIndex = '1';
+
     // ✱ HQ: чуть сглаживаем позиционирование
     if (app.renderer) {
       app.renderer.roundPixels = true;
@@ -286,6 +309,8 @@
       container.y = h / 2;
 
       console.log('Pixi: resizeApp ->', w, 'x', h);
+
+      updateGlowCenter();
     }
 
     window.addEventListener('resize', resizeApp);
@@ -323,6 +348,8 @@
       container.x += deltaX;
       container.y += deltaY;
       lastMousePosition = newMousePosition;
+
+      updateGlowCenter();
     });
 
     app.canvas.addEventListener('wheel', (event) => {
@@ -342,6 +369,8 @@
         container.scale.set(scale);
         container.x = mouseX - worldPos.x * scale;
         container.y = mouseY - worldPos.y * scale;
+
+        updateGlowCenter();
       }
     }, { passive: false });
 
@@ -370,6 +399,25 @@
     const HEXES = [];
     let selectedHex = null;
     let centerHex = null;
+
+    // ── функция, двигающая центр свечения за центральной сотой ──
+    function updateGlowCenter() {
+      const glow = document.getElementById('pixi-background-glow');
+      if (!glow || !centerHex) return;
+
+      const global = container.toGlobal(new PIXI.Point(
+        centerHex.graphics.x,
+        centerHex.graphics.y
+      ));
+
+      glow.style.background = `radial-gradient(
+        circle at ${global.x}px ${global.y}px,
+        rgba(255,255,255,0.12) 0%,
+        rgba(255,255,255,0.04) 25%,
+        rgba(0,0,0,0.90) 70%,
+        rgba(0,0,0,1.0) 100%
+      )`;
+    }
 
     const clearMap = () => {
       container.removeChildren();
@@ -747,6 +795,8 @@
       });
 
       console.log('Pixi карта отрисована, всего сот:', HEXES.length);
+
+      updateGlowCenter();
     }
 
     function drawMap(raw) {
