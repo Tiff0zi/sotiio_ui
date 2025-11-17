@@ -13,28 +13,64 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
-    #palette-panel {
+     #palette-panel {
       position: fixed;
       top: 20px;
       right: 20px;
       z-index: 10;
-      width: 140px;
-      height: 160px;
-      transition: all 0.3s ease;
-      cursor: pointer;
+
+      padding: 10px 12px 18px;
+      width: 170px;
+      height: 190px;
+
+      background: rgba(20, 20, 20, 0.92);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      backdrop-filter: blur(14px);
+
+      transition: all 0.25s ease;
     }
 
+    /* Свернутое состояние — аккуратный чип с центральным цветом */
     #palette-panel.collapsed {
-      width: 60px;
-      height: 70px;
+      height: auto;
+      width: auto;
+      padding: 6px 10px 10px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
     }
 
     #palette-panel.collapsed .palette-hexagon {
-      transform: scale(0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: auto;
+      height: auto;
     }
 
     #palette-panel.collapsed .palette-center {
-      transform: scale(1.2);
+      position: static;
+      transform: none;
+      width: 26px;
+      height: 26px;
+      margin: 0;
+    }
+
+    #palette-panel.collapsed .palette-center input {
+      border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    #palette-panel.collapsed .palette-sector,
+    #palette-panel.collapsed .palette-placeholder {
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      margin: 0;
     }
 
     .palette-hexagon {
@@ -42,37 +78,44 @@
       width: 100%;
       height: 100%;
       transition: all 0.3s ease;
+
+      display: grid;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 6px;
+      align-items: center;
+      justify-items: center;
     }
 
     .palette-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 50px;
-      height: 50px;
+      position: static;
+      grid-row: 2;
+      grid-column: 2;
+      width: 40px;
+      height: 40px;
       z-index: 3;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
     }
 
     .palette-center input {
       width: 100%;
       height: 100%;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      transition: all 0.2s ease;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
 
     .palette-center input:hover {
-      transform: scale(1.1);
+      transform: scale(1.06);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.55);
     }
 
     .palette-sector {
-      position: absolute;
-      width: 40px;
-      height: 40px;
+      position: static;
+      width: 36px;
+      height: 36px;
       z-index: 2;
     }
 
@@ -80,30 +123,49 @@
       width: 100%;
       height: 100%;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-      transition: all 0.2s ease;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
 
     .palette-sector input:hover {
-      transform: scale(1.15);
+      transform: scale(1.1);
+      box-shadow: 0 5px 14px rgba(0,0,0,0.5);
     }
 
-    .palette-sector[data-sector="1"] { top: 10px; left: 50px; }
-    .palette-sector[data-sector="2"] { top: 10px; right: 50px; }
-    .palette-sector[data-sector="3"] { top: 60px; right: 10px; }
-    .palette-sector[data-sector="4"] { bottom: 10px; right: 50px; }
-    .palette-sector[data-sector="5"] { bottom: 10px; left: 50px; }
-    .palette-sector[data-sector="6"] { top: 60px; left: 10px; }
+    /* 3×3 сетка:
+       1 2 3
+       8 0 4
+       7 6 5
+       2 и 6 — скрытые плейсхолдеры
+    */
+
+    .palette-sector[data-sector="1"] { grid-row: 1; grid-column: 1; } /* ↖ */
+    .palette-sector[data-sector="2"] { grid-row: 1; grid-column: 3; } /* ↗ */
+    .palette-sector[data-sector="3"] { grid-row: 2; grid-column: 3; } /* → */
+    .palette-sector[data-sector="4"] { grid-row: 3; grid-column: 3; } /* ↘ */
+    .palette-sector[data-sector="5"] { grid-row: 3; grid-column: 1; } /* ↙ */
+    .palette-sector[data-sector="6"] { grid-row: 2; grid-column: 1; } /* ← */
+
+    .palette-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      opacity: 0;          /* «квадрат есть, но невидимый» */
+      pointer-events: none;
+    }
+
+    .palette-placeholder[data-pos="2"] { grid-row: 1; grid-column: 2; }
+    .palette-placeholder[data-pos="6"] { grid-row: 3; grid-column: 2; }
 
     .palette-toggle {
       position: absolute;
-      bottom: -25px;
+      bottom: -26px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(30, 30, 30, 0.9);
-      color: #aaa;
+      background: rgba(20, 20, 20, 0.95);
+      color: #bbb;
       border: none;
       border-radius: 12px;
       padding: 4px 12px;
@@ -111,6 +173,11 @@
       cursor: pointer;
       backdrop-filter: blur(10px);
       transition: all 0.2s ease;
+    }
+
+    .palette-toggle:hover {
+      background: rgba(40, 40, 40, 0.98);
+      color: #fff;
     }
 
     .palette-toggle:hover {
@@ -122,30 +189,51 @@
 <body>
   <div id="palette-panel" class="collapsed">
     <div class="palette-hexagon">
-      <div class="palette-center">
-        <input class="palette-color" type="color" data-sector="0" title="Center L1" />
-      </div>
+      <!-- 1 (↖) -->
       <div class="palette-sector" data-sector="1">
         <input class="palette-color" type="color" data-sector="1" title="L2-1 ↖" />
       </div>
+
+      <!-- 2 — пустой, невидимый квадрат -->
+      <div class="palette-placeholder" data-pos="2"></div>
+
+      <!-- 3 (↗) -->
       <div class="palette-sector" data-sector="2">
         <input class="palette-color" type="color" data-sector="2" title="L2-2 ↗" />
       </div>
-      <div class="palette-sector" data-sector="3">
-        <input class="palette-color" type="color" data-sector="3" title="L2-3 →" />
-      </div>
-      <div class="palette-sector" data-sector="4">
-        <input class="palette-color" type="color" data-sector="4" title="L2-4 ↘" />
-      </div>
-      <div class="palette-sector" data-sector="5">
-        <input class="palette-color" type="color" data-sector="5" title="L2-5 ↙" />
-      </div>
+
+      <!-- 8 (←) -->
       <div class="palette-sector" data-sector="6">
         <input class="palette-color" type="color" data-sector="6" title="L2-6 ←" />
       </div>
+
+      <!-- 0 — центр -->
+      <div class="palette-center">
+        <input class="palette-color" type="color" data-sector="0" title="Center L1" />
+      </div>
+
+      <!-- 4 (→) -->
+      <div class="palette-sector" data-sector="3">
+        <input class="palette-color" type="color" data-sector="3" title="L2-3 →" />
+      </div>
+
+      <!-- 7 (↙) -->
+      <div class="palette-sector" data-sector="5">
+        <input class="palette-color" type="color" data-sector="5" title="L2-5 ↙" />
+      </div>
+
+      <!-- 6 — пустой, невидимый квадрат -->
+      <div class="palette-placeholder" data-pos="6"></div>
+
+      <!-- 5 (↘) -->
+      <div class="palette-sector" data-sector="4">
+        <input class="palette-color" type="color" data-sector="4" title="L2-4 ↘" />
+      </div>
     </div>
-    <button class="palette-toggle">•••</button>
+
+    <button class="palette-toggle">Палитра</button>
   </div>
+
 
   <script src="/PixiJS/pixi.min.js"></script>
 
