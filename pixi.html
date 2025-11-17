@@ -5,15 +5,14 @@
   <title>Sotiio Pixi Hex Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    html,body {
-      margin:0;
-      height:100%;
-      overflow:hidden;
-      background:#1e1e1e;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    
     /* ───── ПАЛИТРА СЛОЁВ ───── */
     #palette-panel {
       position: fixed;
@@ -142,7 +141,6 @@
        7 6 5
        2 и 6 — скрытые плейсхолдеры
     */
-
     .palette-sector[data-sector="1"] { grid-row: 1; grid-column: 1; } /* ↖ */
     .palette-sector[data-sector="2"] { grid-row: 1; grid-column: 3; } /* ↗ */
     .palette-sector[data-sector="3"] { grid-row: 2; grid-column: 3; } /* → */
@@ -154,7 +152,7 @@
       width: 36px;
       height: 36px;
       border-radius: 8px;
-      opacity: 0;          /* «квадрат есть, но невидимый» */
+      opacity: 0;          /* квадрат есть, но невидимый */
       pointer-events: none;
     }
 
@@ -180,62 +178,6 @@
     .palette-toggle:hover {
       background: rgba(40, 40, 40, 0.98);
       color: #fff;
-    }
-
-    #loading-overlay {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at top, #333 0, #1e1e1e 55%, #050505 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-      color: #f5f5f5;
-      font-size: 14px;
-      z-index: 100;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    #loading-overlay.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: 4px solid rgba(255,255,255,0.15);
-      border-top-color: #f97316;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    #loading-text {
-      max-width: 280px;
-      text-align: center;
-      line-height: 1.4;
-      color: #ddd;
-    }
-
-    #debug-panel {
-      position: fixed;
-      left: 20px;
-      bottom: 20px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.6);
-      color: #ccc;
-      font-size: 11px;
-      border-radius: 8px;
-      z-index: 20;
-      max-width: 320px;
-      white-space: pre-line;
     }
   </style>
 </head>
@@ -287,13 +229,6 @@
     <button class="palette-toggle">Палитра</button>
   </div>
 
-  <div id="loading-overlay" class="visible">
-    <div class="spinner"></div>
-    <div id="loading-text">Загружаем карту…</div>
-  </div>
-
-  <div id="debug-panel"></div>
-
   <script src="/PixiJS/pixi.min.js"></script>
 
   <script>
@@ -304,6 +239,7 @@
     }
 
     const DPR = window.devicePixelRatio || 1;
+
     const app = new PIXI.Application();
     await app.init({
       width: 1,
@@ -317,12 +253,8 @@
 
     PIXI.settings.ROUND_PIXELS = true;
 
-
     const container = new PIXI.Container();
     app.stage.addChild(container);
-
-    let lastCells = null;
-    let currentMapId = null;
 
     function resizeApp() {
       const w = document.documentElement.clientWidth || window.innerWidth || 800;
@@ -336,6 +268,7 @@
     window.addEventListener('resize', resizeApp);
     resizeApp();
 
+    // ─── Палитра ─────────────────────────────────
     const palettePanel = document.getElementById('palette-panel');
     const paletteToggle = palettePanel.querySelector('.palette-toggle');
     const paletteInputs = palettePanel.querySelectorAll('.palette-color');
@@ -362,23 +295,7 @@
       }
     });
 
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const loadingText = document.getElementById('loading-text');
-    const debugPanel = document.getElementById('debug-panel');
-
-    function setLoading(visible, message = '') {
-      if (visible) {
-        loadingOverlay.classList.add('visible');
-        loadingText.textContent = message || 'Загружаем карту…';
-      } else {
-        loadingOverlay.classList.remove('visible');
-      }
-    }
-
-    function setDebug(text) {
-      debugPanel.textContent = text;
-    }
-
+    // ─── Геометрия ───────────────────────────────
     function axialToPixel(q, r, size) {
       const x = size * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
       const y = size * (3 / 2 * r);
@@ -405,6 +322,7 @@
       return g;
     }
 
+    // ─── Обёртка текста внутри соты ─────────────
     function wrapLabel(text) {
       if (!text) return '';
 
@@ -454,6 +372,7 @@
       return lines.slice(0, MAX_LINES).join('\n');
     }
 
+    // ─── Отрисовка карты ────────────────────────
     const HEX_SIZE = 40;
     const hexCells = [];
 
@@ -510,10 +429,6 @@
       container.y = app.renderer.height / 2;
     }
 
-    function findCellByNodeId(nodeId) {
-      return hexCells.find(c => c.data && c.data.node_id === nodeId);
-    }
-
     function updatePaletteInputs(colorsBySector) {
       paletteInputs.forEach(input => {
         const sector = input.dataset.sector;
@@ -525,13 +440,11 @@
 
     paletteInputs.forEach(input => {
       input.addEventListener('input', () => {
-        if (!lastCells) return;
-
         const sector = input.dataset.sector;
         const colorValue = input.value;
         const colorNumber = parseInt(colorValue.replace('#', ''), 16);
 
-        lastCells.forEach(cell => {
+        hexCells.forEach(cell => {
           if (!cell.data) return;
           if (String(cell.data.sector) === String(sector)) {
             cell.graphics.tint = colorNumber;
@@ -540,24 +453,26 @@
       });
     });
 
+    // ─── Панорамирование и зум ──────────────────
     let isPanning = false;
     let lastPan = { x: 0, y: 0 };
 
     app.stage.eventMode = 'static';
     app.stage.hitArea = app.screen;
-    app.stage.on('pointerdown', (e) => {
+
+    app.stage.on('pointerdown', (event) => {
       isPanning = true;
-      lastPan.x = e.global.x;
-      lastPan.y = e.global.y;
+      lastPan.x = event.global.x;
+      lastPan.y = event.global.y;
       app.stage.cursor = 'grabbing';
     });
 
-    app.stage.on('pointermove', (e) => {
+    app.stage.on('pointermove', (event) => {
       if (!isPanning) return;
-      const dx = e.global.x - lastPan.x;
-      const dy = e.global.y - lastPan.y;
-      lastPan.x = e.global.x;
-      lastPan.y = e.global.y;
+      const dx = event.global.x - lastPan.x;
+      const dy = event.global.y - lastPan.y;
+      lastPan.x = event.global.x;
+      lastPan.y = event.global.y;
       container.x += dx;
       container.y += dy;
     });
@@ -594,76 +509,59 @@
       container.y = mousePos.y - worldPos.y * newScale;
     }, { passive: true });
 
-    async function fetchMapData() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const mapId = urlParams.get('map_id');
+    // ─── Приём карты от index.html ──────────────
+    function normalizeColor(c) {
+      if (c == null) return 0x555555;
+      if (typeof c === 'number') return c;
+      let s = String(c).trim();
+      if (s.startsWith('#')) s = s.slice(1);
+      if (s.startsWith('0x')) s = s.slice(2);
+      const n = parseInt(s, 16);
+      if (Number.isNaN(n)) return 0x555555;
+      return n;
+    }
 
-      if (!mapId) {
-        setDebug('map_id не указан в query string');
-        setLoading(false, '');
-        return null;
-      }
-
-      currentMapId = mapId;
-      setDebug(`map_id: ${mapId}`);
-
+    function drawMap(payload) {
       try {
-        setLoading(true, 'Запрашиваем карту…');
-        const resp = await fetch(`/webhook/map?map_id=${encodeURIComponent(mapId)}`);
-        if (!resp.ok) {
-          setDebug(`Ошибка загрузки: ${resp.status} ${resp.statusText}`);
-          setLoading(false, '');
-          return null;
-        }
-        const json = await resp.json();
+        const cells = payload && Array.isArray(payload.cells) ? payload.cells : [];
 
-        if (!json || !Array.isArray(json.nodes)) {
-          setDebug('Некорректный формат ответа: нет nodes');
-          setLoading(false, '');
-          return null;
-        }
+        const nodes = cells.map(c => ({
+          q: c.q,
+          r: c.r,
+          label: c.label,
+          fillColor: normalizeColor(c.fillColor),
+          node_id: c.node_id,
+          sector: c.sector ?? 0
+        }));
 
-        setLoading(false, '');
-        return json;
+        const colorsBySector = payload && payload.colorsBySector ? payload.colorsBySector : {
+          0: '#ff9800',
+          1: '#4caf50',
+          2: '#2196f3',
+          3: '#9c27b0',
+          4: '#f44336',
+          5: '#ffeb3b',
+          6: '#607d8b'
+        };
+        updatePaletteInputs(colorsBySector);
+
+        drawHexMap(nodes);
       } catch (err) {
-        console.error(err);
-        setDebug('Ошибка сети при загрузке карты');
-        setLoading(false, '');
-        return null;
+        console.error('Ошибка при отрисовке карты:', err);
       }
     }
 
-    async function initMap() {
-      const mapData = await fetchMapData();
-      if (!mapData) return;
+    window.addEventListener('message', (ev) => {
+      const msg = ev.data || {};
+      if (msg.type === 'map:pixi') {
+        drawMap(msg.payload);
+      }
+      if (msg.type === 'pixi:resize') {
+        resizeApp();
+      }
+    });
 
-      const nodes = mapData.nodes.map(n => ({
-        q: n.q,
-        r: n.r,
-        label: n.label,
-        fillColor: parseInt((n.fillColor || '0x555555').toString().replace('#','').replace('0x',''), 16),
-        node_id: n.node_id,
-        sector: n.sector ?? 0
-      }));
-
-      lastCells = nodes;
-
-      const colorsBySector = mapData.colorsBySector || {
-        0: '#ff9800',
-        1: '#4caf50',
-        2: '#2196f3',
-        3: '#9c27b0',
-        4: '#f44336',
-        5: '#ffeb3b',
-        6: '#607d8b'
-      };
-      updatePaletteInputs(colorsBySector);
-
-      drawHexMap(nodes);
-    }
-
-    await initMap();
-
+    console.log('Pixi viewer готов. Ждёт { type: "map:pixi", payload }');
   })();
   </script>
 </body>
