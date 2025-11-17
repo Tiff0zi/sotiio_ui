@@ -2,19 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>Sotiio Pixi Hex Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixi viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #1e1e1e;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    html,body {
+      margin:0;
+      height:100%;
+      overflow:hidden;
+      background:#1e1e1e;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,s-serif;
     }
 
-    /* ───── ПАЛИТРА СЛОЁВ ───── */
-    #palette-panel {
+     #palette-panel {
       position: fixed;
       top: 20px;
       right: 20px;
@@ -141,6 +140,7 @@
        7 6 5
        2 и 6 — скрытые плейсхолдеры
     */
+
     .palette-sector[data-sector="1"] { grid-row: 1; grid-column: 1; } /* ↖ */
     .palette-sector[data-sector="2"] { grid-row: 1; grid-column: 3; } /* ↗ */
     .palette-sector[data-sector="3"] { grid-row: 2; grid-column: 3; } /* → */
@@ -152,7 +152,7 @@
       width: 36px;
       height: 36px;
       border-radius: 8px;
-      opacity: 0;          /* квадрат есть, но невидимый */
+      opacity: 0;          /* «квадрат есть, но невидимый» */
       pointer-events: none;
     }
 
@@ -177,6 +177,11 @@
 
     .palette-toggle:hover {
       background: rgba(40, 40, 40, 0.98);
+      color: #fff;
+    }
+
+    .palette-toggle:hover {
+      background: rgba(40, 40, 40, 0.95);
       color: #fff;
     }
   </style>
@@ -238,23 +243,24 @@
       return;
     }
 
-    const DPR = window.devicePixelRatio || 1;
-
+    // Улучшенная инициализация с высоким разрешением и сглаживанием
     const app = new PIXI.Application();
     await app.init({
       width: 1,
       height: 1,
       background: '#1e1e1e',
       antialias: true,
-      resolution: DPR,
-      autoDensity: true
+      resolution: window.devicePixelRatio || 2, // Высокое разрешение для четкости
+      autoDensity: true, // Автоматическая адаптация к плотности пикселей
+      powerPreference: 'high-performance'
     });
     document.body.appendChild(app.canvas);
 
-    PIXI.settings.ROUND_PIXELS = true;
-
     const container = new PIXI.Container();
     app.stage.addChild(container);
+
+    let lastCells = null;
+    let currentMapId = null;
 
     function resizeApp() {
       const w = document.documentElement.clientWidth || window.innerWidth || 800;
@@ -263,142 +269,329 @@
       app.renderer.resize(w, h);
       container.x = w / 2;
       container.y = h / 2;
+
+      console.log('Pixi: resizeApp ->', w, 'x', h);
     }
 
     window.addEventListener('resize', resizeApp);
-    resizeApp();
+    setTimeout(resizeApp, 200);
 
-    // ─── Палитра ─────────────────────────────────
-    const palettePanel = document.getElementById('palette-panel');
-    const paletteToggle = palettePanel.querySelector('.palette-toggle');
-    const paletteInputs = palettePanel.querySelectorAll('.palette-color');
-    let paletteCollapsed = true;
+    let isDragging = false;
+    let lastMousePosition = null;
+    let scale = 1;
+    const minScale = 0.3; // Более глубокий zoom out
+    const maxScale = 4;   // Более глубокий zoom in
 
-    paletteToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      paletteCollapsed = !paletteCollapsed;
-      if (paletteCollapsed) {
-        palettePanel.classList.add('collapsed');
-      } else {
-        palettePanel.classList.remove('collapsed');
+    app.stage.eventMode = 'static';
+    app.stage.hitArea = app.screen;
+
+    app.stage.on('pointerdown', (event) => {
+      isDragging = true;
+      lastMousePosition = event.global.clone();
+    });
+
+    app.stage.on('pointerup', () => {
+      isDragging = false;
+      lastMousePosition = null;
+    });
+
+    app.stage.on('pointerupoutside', () => {
+      isDragging = false;
+      lastMousePosition = null;
+    });
+
+    app.stage.on('pointermove', (event) => {
+      if (!isDragging || !lastMousePosition) return;
+      const newMousePosition = event.global.clone();
+      const deltaX = newMousePosition.x - lastMousePosition.x;
+      const deltaY = newMousePosition.y - lastMousePosition.y;
+      container.x += deltaX;
+      container.y += deltaY;
+      lastMousePosition = newMousePosition;
+    });
+
+    // Улучшенное масштабирование с плавностью
+    app.canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const zoomSpeed = 0.08; // Более плавный зум
+      const zoomFactor = event.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
+      const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
+
+      if (newScale !== scale) {
+        const rect = app.canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        
+        const worldPos = {
+          x: (mouseX - container.x) / scale,
+          y: (mouseY - container.y) / scale
+        };
+        
+        scale = newScale;
+        container.scale.set(scale);
+        
+        // Плавное перемещение к точке масштабирования
+        container.x = mouseX - worldPos.x * scale;
+        container.y = mouseY - worldPos.y * scale;
       }
+    }, { passive: false });
+
+    const SQRT3 = Math.sqrt(3);
+    const size = 60; // Увеличиваем размер для лучшей детализации
+
+    const axialToPixel = (q, r) => ({
+      x: size * (SQRT3 * q + SQRT3 / 2 * r),
+      y: size * (1.5 * r)
     });
 
-    palettePanel.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    document.addEventListener('click', () => {
-      if (!paletteCollapsed) {
-        paletteCollapsed = true;
-        palettePanel.classList.add('collapsed');
-      }
-    });
-
-    // ─── Геометрия ───────────────────────────────
-    function axialToPixel(q, r, size) {
-      const x = size * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
-      const y = size * (3 / 2 * r);
-      return { x, y };
-    }
-
-    function createHexagon(size, fillColor, lineColor) {
-      const g = new PIXI.Graphics();
-      g.lineStyle(1, lineColor, 1);
-      g.beginFill(fillColor, 1);
-
-      const angle = Math.PI / 3;
+    const createHexPoints = (radius) => {
+      const points = [];
       for (let i = 0; i < 6; i++) {
-        const x = size * Math.cos(angle * i);
-        const y = size * Math.sin(angle * i);
-        if (i === 0) {
-          g.moveTo(x, y);
-        } else {
-          g.lineTo(x, y);
-        }
+        const angle = (Math.PI / 180) * (60 * i - 30);
+        points.push(
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius
+        );
       }
-      g.closePath();
-      g.endFill();
-      return g;
-    }
+      return points;
+    };
 
-    // ─── Обёртка текста внутри соты ─────────────
-    function wrapLabel(text) {
-      if (!text) return '';
+    const HEX_PTS = createHexPoints(size);
 
-      const MAX_CHARS_SINGLE = 9;
-      const MAX_LINES = 4;
-      const MAX_WORDS_PER_LINE = 1;
-      const MAX_LINE_LENGTH_MULTI = 10;
+    const HEXES = [];
+    let selectedHex = null;
+    let centerHex = null;
 
-      const words = text.split(/\s+/).filter(Boolean);
+    const clearMap = () => {
+      container.removeChildren();
+      HEXES.length = 0;
+      selectedHex = null;
+      centerHex = null;
+    };
 
-      if (words.length === 1 && words[0].length > MAX_CHARS_SINGLE) {
-        let w = words[0].slice(0, MAX_CHARS_SINGLE - 1) + '…';
-        return w;
+    // Улучшенная функция обертки текста
+    function wrapLabel(text, maxCharsSingle = 10, maxLineLenMulti = 11, maxLines = 3) {
+      const str = String(text || '').trim();
+      if (!str) return '';
+
+      // Если текст короткий - возвращаем как есть
+      if (str.length <= maxCharsSingle && !str.includes(' ')) {
+        return str;
+      }
+
+      const words = str.split(/\s+/).filter(Boolean);
+      
+      // Для очень длинных одиночных слов
+      if (words.length === 1 && words[0].length > maxCharsSingle) {
+        return words[0].slice(0, maxCharsSingle) + '…';
       }
 
       const lines = [];
       let currentLine = '';
 
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-
-        if (lines.length >= MAX_LINES) break;
-
-        if (MAX_WORDS_PER_LINE === 1) {
-          lines.push(word);
-          continue;
-        }
-
-        if (!currentLine) {
-          currentLine = word;
-          continue;
-        }
-
-        const testLine = currentLine + ' ' + word;
-        if (testLine.length <= MAX_LINE_LENGTH_MULTI) {
+      words.forEach(word => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        
+        if (testLine.length <= maxLineLenMulti) {
           currentLine = testLine;
         } else {
-          lines.push(currentLine);
-          currentLine = word;
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          currentLine = word.length > maxLineLenMulti ? word.slice(0, maxLineLenMulti) + '…' : word;
         }
-      }
+      });
 
-      if (currentLine && lines.length < MAX_LINES) {
+      if (currentLine && lines.length < maxLines) {
         lines.push(currentLine);
       }
 
-      return lines.slice(0, MAX_LINES).join('\n');
+      // Добавляем многоточие если текст обрезан
+      if (lines.length === maxLines && currentLine && !lines.includes(currentLine)) {
+        const lastLine = lines[maxLines - 1];
+        if (lastLine.length >= maxLineLenMulti - 2) {
+          lines[maxLines - 1] = lastLine.slice(0, -3) + '…';
+        }
+      }
+
+      return lines.slice(0, maxLines).join('\n');
     }
 
-    // ─── Отрисовка карты ────────────────────────
-    const HEX_SIZE = 40;
-    const hexCells = [];
+    const BASE_COLORS = {
+      0: 0xff622b,
+      1: 0xd98073,
+      2: 0xffd9bf,
+      3: 0x61f29d,
+      4: 0x4991b6,
+      5: 0x6680cc,
+      6: 0xe64073
+    };
 
-    function drawHexCell(q, r, labelText, fillColor) {
-      const { x, y } = axialToPixel(q, r, HEX_SIZE);
+    function intToHexColor(intVal) {
+      let s = intVal.toString(16);
+      while (s.length < 6) s = '0' + s;
+      return '#' + s;
+    }
 
-      const graphics = createHexagon(HEX_SIZE, fillColor, 0x444444);
+    function setupPaletteUI() {
+      const inputs = document.querySelectorAll('input.palette-color');
+      inputs.forEach(input => {
+        const sector = Number(input.dataset.sector);
+        const base = BASE_COLORS[sector] ?? 0x000000;
+        input.value = intToHexColor(base);
+
+        input.addEventListener('input', (e) => {
+          const val = e.target.value;
+          const intVal = parseInt(val.slice(1), 16);
+          if (!Number.isNaN(intVal)) {
+            BASE_COLORS[sector] = intVal;
+            if (lastCells && Array.isArray(lastCells)) {
+              buildFromCells(lastCells);
+            }
+          }
+        });
+      });
+
+      const palettePanel = document.getElementById('palette-panel');
+      const toggleButton = document.querySelector('.palette-toggle');
+      
+      toggleButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        palettePanel.classList.toggle('collapsed');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!palettePanel.contains(e.target)) {
+          palettePanel.classList.add('collapsed');
+        }
+      });
+
+      palettePanel.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    setupPaletteUI();
+
+    function parseLevelVector(cell) {
+      const id = (cell && cell.data && cell.data.id) || cell.id || '';
+      const m = /^L(\d)(?:-([0-9]+))?(?:-([0-9]+))?/.exec(id);
+      let level = null;
+      let sector = null;
+      let order = null;
+
+      if (m) {
+        level = parseInt(m[1], 10);
+        if (m[2]) sector = parseInt(m[2], 10);
+        if (m[3]) order = parseInt(m[3], 10);
+      }
+
+      if (!level) {
+        const q = Number(cell.q) || 0;
+        const r = Number(cell.r) || 0;
+        const s = -q - r;
+        const radius = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
+        if (radius === 0) level = 1;
+        else if (radius === 1) level = 2;
+        else if (radius === 2) level = 3;
+        else level = 4;
+      }
+
+      return { level, sector, order };
+    }
+
+    function getFillStyle(cell) {
+      const { level, sector, order } = parseLevelVector(cell);
+
+      if (level === 1) {
+        return { color: BASE_COLORS[0], alpha: 1 };
+      }
+
+      if (level === 2) {
+        const baseColor = (sector && BASE_COLORS[sector]) ? BASE_COLORS[sector] : 0x000000;
+        return { color: baseColor, alpha: 1 };
+      }
+
+      const baseColor = (sector && BASE_COLORS[sector]) ? BASE_COLORS[sector] : 0x000000;
+
+      if (!sector) {
+        return { color: baseColor, alpha: 0 };
+      }
+
+      if (level === 3) {
+        return { color: baseColor, alpha: 0.5 };
+      }
+
+      if (level >= 4) {
+        const idx = order || 1;
+        const isOdd = idx % 2 === 1;
+        const alpha = isOdd ? 0.2 : 0.1;
+        return { color: baseColor, alpha };
+      }
+
+      return { color: baseColor, alpha: 0 };
+    }
+
+    const createHex = (cell) => {
+      const q = Number(cell.q) || 0;
+      const r = Number(cell.r) || 0;
+      const labelText = cell.label || '';
+      const { x, y } = axialToPixel(q, r);
+
+      const { color: fillColor, alpha: fillAlpha } = getFillStyle(cell);
+
+      const graphics = new PIXI.Graphics();
+      
+      // Включаем сглаживание для графики
+      graphics.smoothing = true;
+      
+      // Улучшенная отрисовка с вектороподобными линиями
+      graphics.poly(HEX_PTS, true)
+              .fill(fillColor, fillAlpha)
+              .stroke({ 
+                color: 0xffffff, 
+                width: 1.5,        // Тонкая обводка
+                alpha: 0.8,        // Полупрозрачная для мягкости
+                join: 'round',     // Скругленные углы
+                cap: 'round'       // Скругленные концы
+              });
+
       graphics.x = x;
       graphics.y = y;
-      graphics.interactive = true;
+      graphics.eventMode = 'static';
       graphics.cursor = 'pointer';
+      graphics.hitArea = new PIXI.Polygon(HEX_PTS);
 
       container.addChild(graphics);
 
+      // Улучшенный текст с высоким разрешением
       const wrapped = wrapLabel(labelText);
       const text = new PIXI.Text({
         text: wrapped,
         style: {
           fill: 0xffffff,
-          fontSize: 11,
-          fontFamily: 'system-ui, Arial',
-          fontWeight: '500',
-          align: 'center'
+          fontSize: 12,           // Увеличим размер шрифта
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+          fontWeight: '600',      // Полужирный для лучшей читаемости
+          align: 'center',
+          lineHeight: 14,         // Межстрочный интервал
+          wordWrap: true,
+          breakWords: true,
+          textBaseline: 'middle',
+          letterSpacing: 0.2,     // Небольшой трекинг
+          dropShadow: {
+            color: 0x000000,
+            alpha: 0.6,
+            blur: 2,
+            distance: 1
+          }
         }
       });
-      text.resolution = DPR;
+      
+      // Включаем сглаживание для текста
+      text.resolution = window.devicePixelRatio || 2;
+      text.smoothing = true;
+      
       text.anchor.set(0.5);
       text.x = x;
       text.y = y;
@@ -410,146 +603,178 @@
         q,
         r,
         selected: false,
-        data: null
+        data: cell.data || cell,
+        baseFillColor: fillColor,
+        baseFillAlpha: fillAlpha
       };
-    }
+    };
 
-    function drawHexMap(nodes) {
-      container.removeChildren();
-      hexCells.length = 0;
+    const applyBaseStyle = (hexObj) => {
+      hexObj.graphics
+        .clear()
+        .poly(HEX_PTS, true)
+        .fill(hexObj.baseFillColor, hexObj.baseFillAlpha)
+        .stroke({ 
+          color: 0xffffff, 
+          width: 1.5, 
+          alpha: 0.8,
+          join: 'round',
+          cap: 'round'
+        });
+    };
 
-      nodes.forEach((node) => {
-        const { q, r, label, fillColor } = node;
-        const cell = drawHexCell(q, r, label, fillColor);
-        cell.data = node;
-        hexCells.push(cell);
-      });
+    const wireInteractions = (hexObj) => {
+      if (hexObj === centerHex) return;
 
-      container.x = app.renderer.width / 2;
-      container.y = app.renderer.height / 2;
-    }
-
-    function updatePaletteInputs(colorsBySector) {
-      paletteInputs.forEach(input => {
-        const sector = input.dataset.sector;
-        if (sector in colorsBySector) {
-          input.value = colorsBySector[sector];
+      hexObj.graphics.on('pointerover', () => {
+        if (!hexObj.selected) {
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(hexObj.baseFillColor, Math.min(hexObj.baseFillAlpha + 0.2, 1))
+                .stroke({ 
+                  color: 0x34a2db, 
+                  width: 2.5, 
+                  alpha: 1,
+                  join: 'round',
+                  cap: 'round'
+                });
         }
       });
-    }
 
-    paletteInputs.forEach(input => {
-      input.addEventListener('input', () => {
-        const sector = input.dataset.sector;
-        const colorValue = input.value;
-        const colorNumber = parseInt(colorValue.replace('#', ''), 16);
-
-        hexCells.forEach(cell => {
-          if (!cell.data) return;
-          if (String(cell.data.sector) === String(sector)) {
-            cell.graphics.tint = colorNumber;
-          }
-        });
+      hexObj.graphics.on('pointerout', () => {
+        if (!hexObj.selected) {
+          applyBaseStyle(hexObj);
+        }
       });
-    });
 
-    // ─── Панорамирование и зум ──────────────────
-    let isPanning = false;
-    let lastPan = { x: 0, y: 0 };
+      hexObj.graphics.on('pointertap', () => {
+        if (selectedHex && selectedHex !== hexObj) {
+          selectedHex.selected = false;
+          applyBaseStyle(selectedHex);
+        }
 
-    app.stage.eventMode = 'static';
-    app.stage.hitArea = app.screen;
+        if (hexObj.selected) {
+          hexObj.selected = false;
+          applyBaseStyle(hexObj);
+          selectedHex = null;
+        } else {
+          hexObj.selected = true;
+          selectedHex = hexObj;
+          hexObj.graphics.clear()
+                .poly(HEX_PTS, true)
+                .fill(0x34a2db, 0.9) // Полупрозрачный синий для выделения
+                .stroke({ 
+                  color: 0xffffff, 
+                  width: 3, 
+                  alpha: 1,
+                  join: 'round',
+                  cap: 'round'
+                });
 
-    app.stage.on('pointerdown', (event) => {
-      isPanning = true;
-      lastPan.x = event.global.x;
-      lastPan.y = event.global.y;
-      app.stage.cursor = 'grabbing';
-    });
+          // Формируем стандартный payload для контейнера
+          const payload = {
+            map_id: currentMapId,
+            node_id: hexObj.data.id,
+            label: hexObj.data.label,
+            ...hexObj.data
+          };
 
-    app.stage.on('pointermove', (event) => {
-      if (!isPanning) return;
-      const dx = event.global.x - lastPan.x;
-      const dy = event.global.y - lastPan.y;
-      lastPan.x = event.global.x;
-      lastPan.y = event.global.y;
-      container.x += dx;
-      container.y += dy;
-    });
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+              { type: 'container:set', payload },
+              '*'
+            );
+          }
+        }
+      });
+    };
 
-    app.stage.on('pointerup', () => {
-      isPanning = false;
-      app.stage.cursor = 'default';
-    });
+    function normalizePixiPayload(raw) {
+      if (!raw) return { format: 'pixi_hex', cells: [] };
 
-    app.stage.on('pointerupoutside', () => {
-      isPanning = false;
-      app.stage.cursor = 'default';
-    });
-
-    window.addEventListener('wheel', (e) => {
-      const scaleFactor = 1.05;
-      const oldScale = container.scale.x;
-      const mousePos = { x: e.clientX, y: e.clientY };
-      const worldPos = {
-        x: (mousePos.x - container.x) / oldScale,
-        y: (mousePos.y - container.y) / oldScale
-      };
-
-      if (e.deltaY < 0) {
-        container.scale.x *= scaleFactor;
-        container.scale.y *= scaleFactor;
-      } else {
-        container.scale.x /= scaleFactor;
-        container.scale.y /= scaleFactor;
+      if (raw.format === 'pixi_hex' && Array.isArray(raw.cells)) {
+        return raw;
       }
 
-      const newScale = container.scale.x;
-      container.x = mousePos.x - worldPos.x * newScale;
-      container.y = mousePos.y - worldPos.y * newScale;
-    }, { passive: true });
+      let obj = raw;
 
-    // ─── Приём карты от index.html ──────────────
-    function normalizeColor(c) {
-      if (c == null) return 0x555555;
-      if (typeof c === 'number') return c;
-      let s = String(c).trim();
-      if (s.startsWith('#')) s = s.slice(1);
-      if (s.startsWith('0x')) s = s.slice(2);
-      const n = parseInt(s, 16);
-      if (Number.isNaN(n)) return 0x555555;
-      return n;
-    }
-
-    function drawMap(payload) {
-      try {
-        const cells = payload && Array.isArray(payload.cells) ? payload.cells : [];
-
-        const nodes = cells.map(c => ({
-          q: c.q,
-          r: c.r,
-          label: c.label,
-          fillColor: normalizeColor(c.fillColor),
-          node_id: c.node_id,
-          sector: c.sector ?? 0
-        }));
-
-        const colorsBySector = payload && payload.colorsBySector ? payload.colorsBySector : {
-          0: '#ff9800',
-          1: '#4caf50',
-          2: '#2196f3',
-          3: '#9c27b0',
-          4: '#f44336',
-          5: '#ffeb3b',
-          6: '#607d8b'
-        };
-        updatePaletteInputs(colorsBySector);
-
-        drawHexMap(nodes);
-      } catch (err) {
-        console.error('Ошибка при отрисовке карты:', err);
+      if (Array.isArray(obj)) {
+        obj = obj[0];
       }
+
+      if (obj && typeof obj === 'object' && '' in obj && typeof obj[''] === 'object') {
+        obj = obj[''];
+      }
+
+      if (obj && typeof obj === 'object' && !Array.isArray(obj) && !obj.cells) {
+        const cells = Object.values(obj).map((cell) => {
+          if (!cell || typeof cell !== 'object') return null;
+          const q = Number(cell.q) || 0;
+          const r = Number(cell.r) || 0;
+          const label = cell.label || '';
+          const id = cell.id;
+
+          return {
+            q,
+            r,
+            label,
+            data: {
+              id,
+              ...(cell.data || {})
+            }
+          };
+        }).filter(Boolean);
+
+        return { format: 'pixi_hex', cells };
+      }
+
+      return raw;
     }
+
+    function buildFromCells(cells) {
+      clearMap();
+
+      if (!cells || !cells.length) {
+        console.warn('Pixi: пустой список cells');
+        return;
+      }
+
+      lastCells = cells.slice();
+
+      console.log('Pixi: строим карту из', cells.length, 'ячеек');
+
+      cells.forEach((cell, idx) => {
+        const hex = createHex(cell);
+        HEXES.push(hex);
+
+        if (idx === 0) {
+          centerHex = hex;
+        } else {
+          wireInteractions(hex);
+        }
+      });
+
+      console.log('Pixi карта отрисована, всего сот:', HEXES.length);
+    }
+
+    function drawMap(raw) {
+      console.log('Pixi: raw payload', raw);
+      
+      // Извлекаем map_id если он есть в payload
+      if (raw && raw.map_id) {
+        currentMapId = raw.map_id;
+        // Убираем map_id из данных карты чтобы не мешал
+        const { map_id, ...mapData } = raw;
+        raw = mapData;
+      }
+      
+      const norm = normalizePixiPayload(raw);
+      console.log('Pixi: normalized payload', norm);
+      resizeApp();
+      buildFromCells(norm.cells || []);
+    }
+
+    window.PixiViewer = { setData: drawMap };
 
     window.addEventListener('message', (ev) => {
       const msg = ev.data || {};
@@ -561,7 +786,7 @@
       }
     });
 
-    console.log('Pixi viewer готов. Ждёт { type: "map:pixi", payload }');
+    console.log('Pixi viewer готов. Ждёт { type:"map:pixi", payload: ... }');
   })();
   </script>
 </body>
