@@ -14,74 +14,140 @@
     }
     
     #drawer {
-      height: 100vh;
+      height: 100%;
       width: 100%;
-      background: #2d2d2d;
+      box-sizing: border-box;
+      padding: 12px 16px 16px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      gap: 12px;
     }
-    
+
+    .dw-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .dw-header-id {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .dw-header-label {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+    }
+
     .dw-tabs {
       display: flex;
-      background: #3d3d3d;
       border-bottom: 1px solid #444;
+      gap: 4px;
     }
-    
+
     .dw-tab {
-      flex: 1;
-      padding: 12px 10px;
-      text-align: center;
-      cursor: pointer;
-      border: 0;
       background: transparent;
-      font-weight: 500;
+      border: none;
       color: #aaa;
-      border-bottom: 2px solid transparent;
-      font-family: inherit;
-      transition: all 0.2s ease;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
-    
-    .dw-tab:hover {
-      background: #454545;
-      color: #fff;
-    }
-    
+
     .dw-tab.active {
-      background: #2d2d2d;
-      border-bottom: 2px solid #ff622b;
+      background: #3a3a3a;
       color: #fff;
+      border-color: #555;
+      border-bottom: 1px solid #3a3a3a;
     }
-    
+
     .dw-body {
-      padding: 16px;
-      overflow: auto;
-      height: 100%;
-      background: #2d2d2d;
+      flex: 1;
+      border-radius: 0 8px 8px 8px;
+      border: 1px solid #444;
+      background: #252525;
+      padding: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
-    
+
     .tab-content {
       display: none;
+      flex: 1;
+      overflow: auto;
     }
-    
+
     .tab-content.active {
       display: block;
     }
-    
-    pre {
-      margin: 0;
-      padding: 12px;
-      background: #3d3d3d;
-      border: 1px solid #444;
-      border-radius: 6px;
+
+    .empty {
+      color: #777;
+      font-size: 13px;
+      padding: 8px 0;
+    }
+
+    .loading {
+      color: #6ab0ff;
+      font-size: 13px;
+      padding: 8px 0;
+    }
+
+    .error {
+      color: #ff6a6a;
+      font-size: 13px;
+      padding: 8px 0;
       white-space: pre-wrap;
-      word-break: break-word;
-      font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
-      color: #e0e0e0;
-      max-height: 400px;
-      overflow: auto;
+    }
+
+    .meta-section {
+      margin-bottom: 16px;
     }
     
+    .meta-section h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0f0f0;
+    }
+    
+    .meta-section small {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: #999;
+    }
+    
+    .meta-block {
+      background: #2f2f2f;
+      border-radius: 6px;
+      border: 1px solid #444;
+      padding: 8px 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    pre {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 0;
+      font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow: auto;
+      border: 1px solid #444;
+    }
+
     table.meta {
       width: 100%;
       border-collapse: collapse;
@@ -93,141 +159,74 @@
     }
     
     table.meta th, table.meta td {
-      padding: 12px;
-      border-bottom: 1px solid #444;
-      font-size: 14px;
+      padding: 6px 8px;
+      font-size: 12px;
       text-align: left;
+      border-bottom: 1px solid #444;
     }
     
     table.meta th {
       width: 30%;
-      background: #454545;
-      color: #ccc;
-      font-weight: 600;
-    }
-    
-    table.meta td {
-      color: #e0e0e0;
-      background: #3d3d3d;
+      color: #aaa;
+      background: #363636;
+      font-weight: 500;
     }
     
     table.meta tr:last-child th,
     table.meta tr:last-child td {
       border-bottom: none;
     }
-    
-    .wiki-item {
-      background: #3d3d3d;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 12px;
-      margin: 0 0 12px;
-    }
-    
-    .wiki-item h3 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      color: #ff622b;
-      font-weight: 600;
-    }
-    
-    .wiki-item div {
-      font-size: 14px;
-      color: #e0e0e0;
-      line-height: 1.5;
-    }
-    
-    .empty {
-      color: #888;
-      font-style: italic;
-      padding: 20px 0;
-      text-align: center;
-      font-size: 14px;
-    }
-    
-    .loading {
-      color: #ff622b;
-      text-align: center;
-      padding: 20px 0;
-      font-size: 14px;
-    }
-    
-    .error {
-      color: #ff4444;
-      text-align: center;
-      padding: 20px 0;
-      font-size: 14px;
-    }
-    
-    .meta-section {
-      margin-bottom: 20px;
-    }
-    
-    .meta-section h3 {
-      color: #ff622b;
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    
+
     .links-list {
       list-style: none;
-      padding: 0;
       margin: 0;
+      padding: 0;
+      font-size: 13px;
     }
-    
+
     .links-list li {
-      padding: 8px 0;
-      border-bottom: 1px solid #444;
+      margin-bottom: 4px;
     }
-    
-    .links-list li:last-child {
-      border-bottom: none;
-    }
-    
+
     .links-list a {
-      color: #34a2db;
+      color: #64b5f6;
       text-decoration: none;
     }
-    
+
     .links-list a:hover {
       text-decoration: underline;
     }
-    
-    ::-webkit-scrollbar {
-      width: 8px;
+
+    .wiki-item {
+      margin-bottom: 12px;
     }
-    
-    ::-webkit-scrollbar-track {
-      background: #3d3d3d;
+
+    .wiki-item h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: #fff;
     }
-    
-    ::-webkit-scrollbar-thumb {
-      background: #555;
-      border-radius: 4px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: #666;
+
+    .wiki-item div {
+      font-size: 13px;
+      color: #ddd;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
   <aside id="drawer" aria-hidden="false">
+    <div class="dw-header">
+      <div class="dw-header-id" id="hdr-id">map_id · node_id</div>
+      <div class="dw-header-label" id="hdr-label">Выберите узел</div>
+    </div>
     <div class="dw-tabs">
-      <button class="dw-tab active" data-tab="meta">Meta</button>
-      <button class="dw-tab" data-tab="wiki">Wiki</button>
-      <button class="dw-tab" data-tab="links">Links</button>
+      <button class="dw-tab active" data-tab="wiki">Wiki</button>
       <button class="dw-tab" data-tab="raw">Raw Data</button>
     </div>
     <div class="dw-body">
-      <div id="tab-meta" class="tab-content active">
-        <div class="empty">Выберите узел на карте для просмотра деталей</div>
-      </div>
-      <div id="tab-wiki" class="tab-content">
-        <div class="empty">Выберите узел на карте для просмотра деталей</div>
-      </div>
-      <div id="tab-links" class="tab-content">
+      <div id="tab-wiki" class="tab-content active">
         <div class="empty">Выберите узел на карте для просмотра деталей</div>
       </div>
       <div id="tab-raw" class="tab-content">
@@ -259,7 +258,7 @@
         .replaceAll('<','&lt;')
         .replaceAll('>','&gt;')
         .replaceAll('"','&quot;')
-        .replaceAll("'","&#39;");
+        .replaceAll("'",'&#39;');
     }
 
     function showLoading(tabId, message = "Загрузка данных...") {
@@ -275,34 +274,39 @@
     function fetchMetaData(mapId, nodeId) {
       return fetch('https://n8n.sotiio.com/webhook/get_meta', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          map_id: mapId,
-          node_id: nodeId
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ map_id: mapId, node_id: nodeId })
       })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      });
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .catch(err => {
+          console.error('Ошибка запроса meta-данных:', err);
+          throw err;
+        });
     }
 
     function renderMeta(nodeLike) {
-      const box = document.getElementById('tab-meta');
-      showLoading('tab-meta', 'Загрузка meta-данных...');
+      const tab = document.getElementById('tab-meta');
+      if (!tab) return;
 
-      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
-      
-      // Показываем базовую информацию сразу
+      showLoading('tab-meta');
+
+      const hdrId = document.getElementById('hdr-id');
+      const hdrLabel = document.getElementById('hdr-label');
+
+      const mapId  = currentMapId || nodeLike?.map_id || '';
+      const nodeId = currentNodeId || nodeLike?.id || nodeLike?.node_id || '';
+      const label  = currentLabel || nodeLike?.label || nodeLike?.topic || nodeLike?.name || '';
+
+      hdrId.textContent = `${mapId || '—'} · ${nodeId || '—'}`;
+      hdrLabel.textContent = label || 'Без имени';
+
       const rows = [
-        ['Map ID', currentMapId || '—'],
-        ['Node ID', currentNodeId || '—'],
-        ['Название', currentLabel || '—'],
-        ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой' : 'Дочерний') || '—'],
+        ['map_id', mapId || '—'],
+        ['node_id', nodeId || '—'],
+        ['label', label || '—'],
       ];
       
       const baseHtml = `
@@ -333,20 +337,30 @@
               metaHtml += `<div class="empty">Дополнительные meta-данные отсутствуют</div>`;
             }
             
-            box.innerHTML = metaHtml;
+            tab.innerHTML = metaHtml;
           })
           .catch(error => {
             console.error('Ошибка загрузки meta-данных:', error);
-            box.innerHTML = baseHtml + `<div class="error">Ошибка загрузки meta-данных: ${error.message}</div>`;
+            showError('tab-meta', `Ошибка загрузки meta-данных: ${escapeHtml(error.message)}`);
           });
       } else {
-        box.innerHTML = baseHtml + `<div class="empty">Для загрузки дополнительных данных требуется map_id и node_id</div>`;
+        tab.innerHTML = baseHtml + `<div class="empty">Для загрузки meta-данных требуется map_id и node_id</div>`;
       }
     }
 
     function renderWiki(nodeLike) {
       const box = document.getElementById('tab-wiki');
-      showLoading('tab-wiki', 'Загрузка wiki-данных...');
+      showLoading('tab-wiki', 'Загрузка wiki...');
+
+      const hdrId = document.getElementById('hdr-id');
+      const hdrLabel = document.getElementById('hdr-label');
+
+      const mapId  = currentMapId || nodeLike?.map_id || '';
+      const nodeId = currentNodeId || nodeLike?.id || nodeLike?.node_id || '';
+      const label  = currentLabel || nodeLike?.label || nodeLike?.topic || nodeLike?.name || '';
+
+      hdrId.textContent = `${mapId || '—'} · ${nodeId || '—'}`;
+      hdrLabel.textContent = label || 'Без имени';
 
       const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
       
@@ -378,110 +392,26 @@
             console.error('Ошибка загрузки wiki-данных:', error);
             box.innerHTML = `<div class="error">Ошибка загрузки wiki-данных: ${error.message}</div>`;
           });
+      } else if (d && (d.wiki || d.description)) {
+        if (d.wiki) {
+          const wikiContent = typeof d.wiki === 'string' ? d.wiki : JSON.stringify(d.wiki, null, 2);
+          box.innerHTML = `
+            <div class="wiki-item">
+              <h3>Wiki информация</h3>
+              <div>${escapeHtml(wikiContent)}</div>
+            </div>
+          `;
+        } else {
+          box.innerHTML = `
+            <div class="wiki-item">
+              <h3>Описание</h3>
+              <div>${escapeHtml(d.description)}</div>
+            </div>
+          `;
+        }
       } else {
-        box.innerHTML = '<div class="empty">Для загрузки wiki-данных требуется map_id и node_id</div>';
+        box.innerHTML = '<div class="empty">Для этого узла нет wiki-информации.</div>';
       }
     }
 
     function renderLinks(nodeLike) {
-      const box = document.getElementById('tab-links');
-      showLoading('tab-links', 'Загрузка ссылок...');
-
-      if (currentMapId && currentNodeId) {
-        fetchMetaData(currentMapId, currentNodeId)
-          .then(metaData => {
-            if (metaData && metaData.links && Array.isArray(metaData.links) && metaData.links.length > 0) {
-              const linksHtml = metaData.links.map(link => 
-                `<li><a href="${escapeHtml(link.url)}" target="_blank">${escapeHtml(link.title || link.url)}</a></li>`
-              ).join('');
-              
-              box.innerHTML = `
-                <div class="meta-section">
-                  <h3>Связанные ссылки</h3>
-                  <ul class="links-list">${linksHtml}</ul>
-                </div>
-              `;
-            } else {
-              box.innerHTML = '<div class="empty">Для этого узла нет связанных ссылок.</div>';
-            }
-          })
-          .catch(error => {
-            console.error('Ошибка загрузки ссылок:', error);
-            box.innerHTML = `<div class="error">Ошибка загрузки ссылок: ${error.message}</div>`;
-          });
-      } else {
-        box.innerHTML = '<div class="empty">Для загрузки ссылок требуется map_id и node_id</div>';
-      }
-    }
-
-    function renderRaw(nodeLike) {
-      const pre = document.getElementById('raw-pre');
-      showLoading('tab-raw', 'Загрузка raw данных...');
-
-      let baseData = {
-        map_id: currentMapId,
-        node_id: currentNodeId,
-        label: currentLabel,
-        ...nodeLike
-      };
-
-      let baseText = '';
-      try {
-        baseText = JSON.stringify(baseData, null, 2);
-      } catch(e) {
-        baseText = String(baseData);
-      }
-
-      if (currentMapId && currentNodeId) {
-        fetchMetaData(currentMapId, currentNodeId)
-          .then(metaData => {
-            const fullData = {
-              ...baseData,
-              meta: metaData
-            };
-            
-            let fullText = '';
-            try {
-              fullText = JSON.stringify(fullData, null, 2);
-            } catch(e) {
-              fullText = baseText + '\n\n// Meta данные не могут быть сериализованы\n';
-            }
-            
-            pre.textContent = fullText;
-          })
-          .catch(error => {
-            console.error('Ошибка загрузки raw данных:', error);
-            pre.textContent = baseText + `\n\n// Ошибка загрузки meta-данных: ${error.message}`;
-          });
-      } else {
-        pre.textContent = baseText;
-      }
-    }
-
-    function setData(nodeLike) {
-      // Сохраняем основные идентификаторы
-      currentMapId = nodeLike.map_id || null;
-      currentNodeId = nodeLike.node_id || null;
-      currentLabel = nodeLike.label || null;
-
-      // Рендерим все вкладки
-      renderMeta(nodeLike);
-      renderWiki(nodeLike);
-      renderLinks(nodeLike);
-      renderRaw(nodeLike);
-    }
-
-    // Связь с index.html
-    window.addEventListener('message', (ev) => {
-      const msg = ev.data || {};
-      if (msg.type === 'container:set') {
-        setData(msg.payload || {});
-      }
-    });
-
-    // Ручной API
-    window.ContainerAPI = { setData };
-  })();
-  </script>
-</body>
-</html>
