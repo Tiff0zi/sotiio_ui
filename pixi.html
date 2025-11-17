@@ -10,7 +10,7 @@
       height:100%;
       overflow:hidden;
       background:#1e1e1e;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,s-serif;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
      #palette-panel {
@@ -234,6 +234,7 @@
     <button class="palette-toggle">Палитра</button>
   </div>
 
+
   <script src="/PixiJS/pixi.min.js"></script>
 
   <script>
@@ -243,18 +244,33 @@
       return;
     }
 
-    // Улучшенная инициализация с высоким разрешением и сглаживанием
+    // ✱ HQ: используем devicePixelRatio (ограничиваем, чтобы не улететь в космос)
+    const DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+
+    function getViewportSize() {
+      const w = document.documentElement.clientWidth || window.innerWidth || 800;
+      const h = document.documentElement.clientHeight || window.innerHeight || 600;
+      return { w, h };
+    }
+
+    const { w: initW, h: initH } = getViewportSize();
+
     const app = new PIXI.Application();
     await app.init({
-      width: 1,
-      height: 1,
+      width: initW,
+      height: initH,
       background: '#1e1e1e',
       antialias: true,
-      resolution: window.devicePixelRatio || 2, // Высокое разрешение для четкости
-      autoDensity: true, // Автоматическая адаптация к плотности пикселей
-      powerPreference: 'high-performance'
+      resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
+      autoDensity: true      // ✱ HQ: canvas подстраивается под resolution
+      // sampleCount: 4      // если твоя сборка Pixi v8 поддерживает MSAA
     });
     document.body.appendChild(app.canvas);
+
+    // ✱ HQ: чуть сглаживаем позиционирование
+    if (app.renderer) {
+      app.renderer.roundPixels = true;
+    }
 
     const container = new PIXI.Container();
     app.stage.addChild(container);
@@ -263,8 +279,7 @@
     let currentMapId = null;
 
     function resizeApp() {
-      const w = document.documentElement.clientWidth || window.innerWidth || 800;
-      const h = document.documentElement.clientHeight || window.innerHeight || 600;
+      const { w, h } = getViewportSize();
 
       app.renderer.resize(w, h);
       container.x = w / 2;
@@ -279,8 +294,8 @@
     let isDragging = false;
     let lastMousePosition = null;
     let scale = 1;
-    const minScale = 0.3; // Более глубокий zoom out
-    const maxScale = 4;   // Более глубокий zoom in
+    const minScale = 0.5;
+    const maxScale = 2;
 
     app.stage.eventMode = 'static';
     app.stage.hitArea = app.screen;
@@ -310,34 +325,28 @@
       lastMousePosition = newMousePosition;
     });
 
-    // Улучшенное масштабирование с плавностью
     app.canvas.addEventListener('wheel', (event) => {
       event.preventDefault();
-      const zoomSpeed = 0.08; // Более плавный зум
+      const zoomSpeed = 0.1;
       const zoomFactor = event.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
       const newScale = Math.min(maxScale, Math.max(minScale, scale * zoomFactor));
 
       if (newScale !== scale) {
-        const rect = app.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-        
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
         const worldPos = {
           x: (mouseX - container.x) / scale,
           y: (mouseY - container.y) / scale
         };
-        
         scale = newScale;
         container.scale.set(scale);
-        
-        // Плавное перемещение к точке масштабирования
         container.x = mouseX - worldPos.x * scale;
         container.y = mouseY - worldPos.y * scale;
       }
     }, { passive: false });
 
     const SQRT3 = Math.sqrt(3);
-    const size = 60; // Увеличиваем размер для лучшей детализации
+    const size = 42;
 
     const axialToPixel = (q, r) => ({
       x: size * (SQRT3 * q + SQRT3 / 2 * r),
@@ -369,52 +378,76 @@
       centerHex = null;
     };
 
-    // Улучшенная функция обертки текста
-    function wrapLabel(text, maxCharsSingle = 10, maxLineLenMulti = 11, maxLines = 3) {
+    function wrapLabel(text, maxCharsSingle = 9, maxLineLenMulti = 10, maxLines = 4) {
       const str = String(text || '').trim();
       if (!str) return '';
 
-      // Если текст короткий - возвращаем как есть
-      if (str.length <= maxCharsSingle && !str.includes(' ')) {
-        return str;
-      }
-
       const words = str.split(/\s+/).filter(Boolean);
-      
-      // Для очень длинных одиночных слов
-      if (words.length === 1 && words[0].length > maxCharsSingle) {
-        return words[0].slice(0, maxCharsSingle) + '…';
+      const wordCount = words.length;
+
+      const cutWord = (word) => {
+        if (word.length <= maxCharsSingle) return word;
+        return word.slice(0, maxCharsSingle) + '.';
+      };
+
+      if (wordCount === 1) {
+        return cutWord(words[0]);
       }
 
       const lines = [];
-      let currentLine = '';
 
-      words.forEach(word => {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        
-        if (testLine.length <= maxLineLenMulti) {
-          currentLine = testLine;
+      if (wordCount === 2 || wordCount === 3) {
+        for (let i = 0; i < wordCount && lines.length < maxLines; i++) {
+          lines.push(cutWord(words[i]));
+        }
+        return lines.join('\n');
+      }
+
+      let current = '';
+
+      for (let i = 0; i < wordCount; i++) {
+        let w = words[i];
+
+        if (w.length > maxCharsSingle) {
+          w = cutWord(w);
+        }
+
+        if (!current) {
+          current = w;
         } else {
-          if (currentLine) {
-            lines.push(currentLine);
+          const candidate = current + ' ' + w;
+          if (candidate.length <= maxLineLenMulti) {
+            current = candidate;
+          } else {
+            lines.push(current);
+            if (lines.length >= maxLines) break;
+            current = w;
           }
-          currentLine = word.length > maxLineLenMulti ? word.slice(0, maxLineLenMulti) + '…' : word;
         }
-      });
 
-      if (currentLine && lines.length < maxLines) {
-        lines.push(currentLine);
+        if (i === wordCount - 1 && current && lines.length < maxLines) {
+          lines.push(current);
+        }
+
+        if (lines.length >= maxLines) break;
       }
 
-      // Добавляем многоточие если текст обрезан
-      if (lines.length === maxLines && currentLine && !lines.includes(currentLine)) {
-        const lastLine = lines[maxLines - 1];
-        if (lastLine.length >= maxLineLenMulti - 2) {
-          lines[maxLines - 1] = lastLine.slice(0, -3) + '…';
+      if (current && lines.length < maxLines && lines[lines.length - 1] !== current) {
+        lines.push(current);
+      }
+
+      if (lines.length > maxLines) {
+        lines.length = maxLines;
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const parts = lines[i].split(/\s+/).filter(Boolean);
+        if (parts.length === 1 && lines[i].length > maxCharsSingle) {
+          lines[i] = cutWord(parts[0]);
         }
       }
 
-      return lines.slice(0, maxLines).join('\n');
+      return lines.join('\n');
     }
 
     const BASE_COLORS = {
@@ -541,20 +574,10 @@
       const { color: fillColor, alpha: fillAlpha } = getFillStyle(cell);
 
       const graphics = new PIXI.Graphics();
-      
-      // Включаем сглаживание для графики
-      graphics.smoothing = true;
-      
-      // Улучшенная отрисовка с вектороподобными линиями
+      graphics.roundPixels = true; // ✱ HQ
       graphics.poly(HEX_PTS, true)
               .fill(fillColor, fillAlpha)
-              .stroke({ 
-                color: 0xffffff, 
-                width: 1.5,        // Тонкая обводка
-                alpha: 0.8,        // Полупрозрачная для мягкости
-                join: 'round',     // Скругленные углы
-                cap: 'round'       // Скругленные концы
-              });
+              .stroke({ color: 0xffffff, width: 1, alpha: 1 });
 
       graphics.x = x;
       graphics.y = y;
@@ -564,34 +587,21 @@
 
       container.addChild(graphics);
 
-      // Улучшенный текст с высоким разрешением
       const wrapped = wrapLabel(labelText);
+
+      // ✱ HQ: текст тоже рендерим с повышенным resolution
       const text = new PIXI.Text({
         text: wrapped,
         style: {
           fill: 0xffffff,
-          fontSize: 12,           // Увеличим размер шрифта
-          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          fontWeight: '600',      // Полужирный для лучшей читаемости
+          fontSize: 12,
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontWeight: '500',
           align: 'center',
-          lineHeight: 14,         // Межстрочный интервал
-          wordWrap: true,
-          breakWords: true,
-          textBaseline: 'middle',
-          letterSpacing: 0.2,     // Небольшой трекинг
-          dropShadow: {
-            color: 0x000000,
-            alpha: 0.6,
-            blur: 2,
-            distance: 1
-          }
+          resolution: DPR
         }
       });
-      
-      // Включаем сглаживание для текста
-      text.resolution = window.devicePixelRatio || 2;
-      text.smoothing = true;
-      
+      text.roundPixels = true; // ✱ HQ
       text.anchor.set(0.5);
       text.x = x;
       text.y = y;
@@ -614,13 +624,7 @@
         .clear()
         .poly(HEX_PTS, true)
         .fill(hexObj.baseFillColor, hexObj.baseFillAlpha)
-        .stroke({ 
-          color: 0xffffff, 
-          width: 1.5, 
-          alpha: 0.8,
-          join: 'round',
-          cap: 'round'
-        });
+        .stroke({ color: 0xffffff, width: 1, alpha: 1 });
     };
 
     const wireInteractions = (hexObj) => {
@@ -630,14 +634,8 @@
         if (!hexObj.selected) {
           hexObj.graphics.clear()
                 .poly(HEX_PTS, true)
-                .fill(hexObj.baseFillColor, Math.min(hexObj.baseFillAlpha + 0.2, 1))
-                .stroke({ 
-                  color: 0x34a2db, 
-                  width: 2.5, 
-                  alpha: 1,
-                  join: 'round',
-                  cap: 'round'
-                });
+                .fill(hexObj.baseFillColor, hexObj.baseFillAlpha)
+                .stroke({ color: 0x34a2db, width: 2, alpha: 1 });
         }
       });
 
@@ -662,14 +660,8 @@
           selectedHex = hexObj;
           hexObj.graphics.clear()
                 .poly(HEX_PTS, true)
-                .fill(0x34a2db, 0.9) // Полупрозрачный синий для выделения
-                .stroke({ 
-                  color: 0xffffff, 
-                  width: 3, 
-                  alpha: 1,
-                  join: 'round',
-                  cap: 'round'
-                });
+                .fill(0x34a2db, 1)
+                .stroke({ color: 0xffffff, width: 2, alpha: 1 });
 
           // Формируем стандартный payload для контейнера
           const payload = {
