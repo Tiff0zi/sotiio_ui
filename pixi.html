@@ -9,11 +9,9 @@
       margin:0;
       height:100%;
       overflow:hidden;
-      background:transparent;
+      background: transparent;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
-
-    /* Убираем старое свечение */
 
     #palette-panel {
       position: fixed;
@@ -189,8 +187,6 @@
   </style>
 </head>
 <body>
-  <!-- Убираем старое свечение -->
-
   <div id="palette-panel" class="collapsed">
     <div class="palette-hexagon">
       <!-- 1 (↖) -->
@@ -219,7 +215,7 @@
       <!-- 4 (→) -->
       <div class="palette-sector" data-sector="3">
         <input class="palette-color" type="color" data-sector="3" title="L2-3 →" />
-      </div>
+     div>
 
       <!-- 7 (↙) -->
       <div class="palette-sector" data-sector="5">
@@ -248,6 +244,7 @@
       return;
     }
 
+    // ✱ HQ: используем devicePixelRatio (ограничиваем, чтобы не улететь в космос)
     const DPR = Math.min(window.devicePixelRatio || 1, 2.5);
 
     function getViewportSize() {
@@ -262,17 +259,20 @@
     await app.init({
       width: initW,
       height: initH,
-      backgroundAlpha: 0, // ВКЛЮЧАЕМ прозрачность
       antialias: true,
-      resolution: DPR,
-      autoDensity: true
+      resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
+      autoDensity: true,     // ✱ HQ: canvas подстраивается под resolution
+      backgroundAlpha: 0
+      // sampleCount: 4      // если твоя сборка Pixi v8 поддерживает MSAA
     });
     document.body.appendChild(app.canvas);
 
-    app.canvas.style.background = 'transparent'; 
+    // Canvas выше фона, но сам прозрачный
     app.canvas.style.position = 'relative';
     app.canvas.style.zIndex = '1';
+    app.canvas.style.background = 'transparent';
 
+    // ✱ HQ: чуть сглаживаем позиционирование
     if (app.renderer) {
       app.renderer.roundPixels = true;
     }
@@ -382,23 +382,9 @@
     let selectedHex = null;
     let centerHex = null;
 
-    // Обновленная функция - отправляем координаты в index.html
+    // ── функция-заглушка: свечение теперь в index, тут ничего не делаем ──
     function updateGlowCenter() {
-      if (!centerHex) return;
-
-      const global = container.toGlobal(new PIXI.Point(
-        centerHex.graphics.x,
-        centerHex.graphics.y
-      ));
-
-      // Отправляем координаты в родительское окно
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'glow:position',
-          x: global.x,
-          y: global.y
-        }, '*');
-      }
+      // no-op
     }
 
     const clearMap = () => {
@@ -604,7 +590,7 @@
       const { color: fillColor, alpha: fillAlpha } = getFillStyle(cell);
 
       const graphics = new PIXI.Graphics();
-      graphics.roundPixels = true;
+      graphics.roundPixels = true; // ✱ HQ
       graphics.poly(HEX_PTS, true)
               .fill(fillColor, fillAlpha)
               .stroke({ color: 0xffffff, width: 1, alpha: 1 });
@@ -619,6 +605,7 @@
 
       const wrapped = wrapLabel(labelText);
 
+      // ✱ HQ: текст тоже рендерим с повышенным resolution
       const text = new PIXI.Text({
         text: wrapped,
         style: {
@@ -630,7 +617,7 @@
           resolution: DPR
         }
       });
-      text.roundPixels = true;
+      text.roundPixels = true; // ✱ HQ
       text.anchor.set(0.5);
       text.x = x;
       text.y = y;
@@ -692,6 +679,7 @@
                 .fill(0x34a2db, 1)
                 .stroke({ color: 0xffffff, width: 2, alpha: 1 });
 
+          // Формируем стандартный payload для контейнера
           const payload = {
             map_id: currentMapId,
             node_id: hexObj.data.id,
@@ -782,8 +770,10 @@
     function drawMap(raw) {
       console.log('Pixi: raw payload', raw);
       
+      // Извлекаем map_id если он есть в payload
       if (raw && raw.map_id) {
         currentMapId = raw.map_id;
+        // Убираем map_id из данных карты чтобы не мешал
         const { map_id, ...mapData } = raw;
         raw = mapData;
       }
