@@ -9,27 +9,13 @@
       margin:0;
       height:100%;
       overflow:hidden;
-      background:#1e1e1e;
+      background:transparent;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
-    /* ── Радиальное свечение под картой ── */
-    #pixi-background-glow {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background: radial-gradient(
-        circle at center,
-        rgba(255,255,255,0.12) 0%,
-        rgba(255,255,255,0.04) 25%,
-        rgba(0,0,0,0.90) 70%,
-        rgba(0,0,0,1.0) 100%
-      );
-      transition: background-position 0.2s ease;
-    }
+    /* Убираем старое свечение */
 
-     #palette-panel {
+    #palette-panel {
       position: fixed;
       top: 20px;
       right: 20px;
@@ -203,8 +189,7 @@
   </style>
 </head>
 <body>
-  <!-- Фон со свечением -->
-  <div id="pixi-background-glow"></div>
+  <!-- Убираем старое свечение -->
 
   <div id="palette-panel" class="collapsed">
     <div class="palette-hexagon">
@@ -263,7 +248,6 @@
       return;
     }
 
-    // ✱ HQ: используем devicePixelRatio (ограничиваем, чтобы не улететь в космос)
     const DPR = Math.min(window.devicePixelRatio || 1, 2.5);
 
     function getViewportSize() {
@@ -278,20 +262,17 @@
     await app.init({
       width: initW,
       height: initH,
-      // backgroundAlpha: 0 <<<<<<< off
+      backgroundAlpha: 0, // ВКЛЮЧАЕМ прозрачность
       antialias: true,
-      resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
-      autoDensity: true      // ✱ HQ: canvas подстраивается под resolution
-      // sampleCount: 4      // если твоя сборка Pixi v8 поддерживает MSAA
+      resolution: DPR,
+      autoDensity: true
     });
     document.body.appendChild(app.canvas);
 
-    // Canvas выше фона со свечением
     app.canvas.style.background = 'transparent'; 
     app.canvas.style.position = 'relative';
     app.canvas.style.zIndex = '1';
 
-    // ✱ HQ: чуть сглаживаем позиционирование
     if (app.renderer) {
       app.renderer.roundPixels = true;
     }
@@ -401,23 +382,23 @@
     let selectedHex = null;
     let centerHex = null;
 
-    // ── функция, двигающая центр свечения за центральной сотой ──
+    // Обновленная функция - отправляем координаты в index.html
     function updateGlowCenter() {
-      const glow = document.getElementById('pixi-background-glow');
-      if (!glow || !centerHex) return;
+      if (!centerHex) return;
 
       const global = container.toGlobal(new PIXI.Point(
         centerHex.graphics.x,
         centerHex.graphics.y
       ));
 
-      glow.style.background = `radial-gradient(
-        circle at ${global.x}px ${global.y}px,
-        rgba(255,255,255,0.12) 0%,
-        rgba(255,255,255,0.04) 25%,
-        rgba(0,0,0,0.90) 70%,
-        rgba(0,0,0,1.0) 100%
-      )`;
+      // Отправляем координаты в родительское окно
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'glow:position',
+          x: global.x,
+          y: global.y
+        }, '*');
+      }
     }
 
     const clearMap = () => {
@@ -623,7 +604,7 @@
       const { color: fillColor, alpha: fillAlpha } = getFillStyle(cell);
 
       const graphics = new PIXI.Graphics();
-      graphics.roundPixels = true; // ✱ HQ
+      graphics.roundPixels = true;
       graphics.poly(HEX_PTS, true)
               .fill(fillColor, fillAlpha)
               .stroke({ color: 0xffffff, width: 1, alpha: 1 });
@@ -638,7 +619,6 @@
 
       const wrapped = wrapLabel(labelText);
 
-      // ✱ HQ: текст тоже рендерим с повышенным resolution
       const text = new PIXI.Text({
         text: wrapped,
         style: {
@@ -650,7 +630,7 @@
           resolution: DPR
         }
       });
-      text.roundPixels = true; // ✱ HQ
+      text.roundPixels = true;
       text.anchor.set(0.5);
       text.x = x;
       text.y = y;
@@ -712,7 +692,6 @@
                 .fill(0x34a2db, 1)
                 .stroke({ color: 0xffffff, width: 2, alpha: 1 });
 
-          // Формируем стандартный payload для контейнера
           const payload = {
             map_id: currentMapId,
             node_id: hexObj.data.id,
@@ -803,10 +782,8 @@
     function drawMap(raw) {
       console.log('Pixi: raw payload', raw);
       
-      // Извлекаем map_id если он есть в payload
       if (raw && raw.map_id) {
         currentMapId = raw.map_id;
-        // Убираем map_id из данных карты чтобы не мешал
         const { map_id, ...mapData } = raw;
         raw = mapData;
       }
