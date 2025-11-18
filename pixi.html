@@ -259,13 +259,18 @@
     await app.init({
       width: initW,
       height: initH,
-      background: transparent;
       antialias: true,
       resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
-      autoDensity: true      // ✱ HQ: canvas подстраивается под resolution
+      autoDensity: true,     // ✱ HQ: canvas подстраивается под resolution
+      backgroundAlpha: 0
       // sampleCount: 4      // если твоя сборка Pixi v8 поддерживает MSAA
     });
     document.body.appendChild(app.canvas);
+
+    // Canvas выше фона, но сам прозрачный
+    app.canvas.style.position = 'relative';
+    app.canvas.style.zIndex = '1';
+    app.canvas.style.background = 'transparent';
 
     // ✱ HQ: чуть сглаживаем позиционирование
     if (app.renderer) {
