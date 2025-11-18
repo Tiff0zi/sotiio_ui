@@ -455,14 +455,14 @@
       return lines.join('\n');
     }
 
-    const BASE_COLORS = {
-      0: 0xff622b,
-      1: 0xd98073,
-      2: 0xffd9bf,
-      3: 0x61f29d,
-      4: 0x4991b6,
-      5: 0x6680cc,
-      6: 0xe64073
+    const BASE_COLORS = { // <<<<<<< Цвета по умолчанию для карты
+      0: 0xffffff,
+      1: 0xd99272,
+      2: 0xfbdebe,
+      3: 0x64c1b8,
+      4: 0x58809c,
+      5: 0x7a799f,
+      6: 0xde5e61
     };
 
     function intToHexColor(intVal) {
@@ -598,7 +598,7 @@
       const text = new PIXI.Text({
         text: wrapped,
         style: {
-          fill: 0xffffff,
+          fill: 0x1e1e1e,
           fontSize: 12,
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontWeight: '500',
