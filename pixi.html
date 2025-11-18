@@ -278,7 +278,7 @@
     await app.init({
       width: initW,
       height: initH,
-      backgroundAlpha: 0   // прозрачный фон канваса,
+      // backgroundAlpha: 0   // прозрачный фон канваса, <<<<<<<<<<<<<<<<<<<<<<< on
       antialias: true,
       resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
       autoDensity: true      // ✱ HQ: canvas подстраивается под resolution
@@ -287,7 +287,7 @@
     document.body.appendChild(app.canvas);
 
     // Canvas выше фона со свечением
-    // app.canvas.style.background = 'transparent'; <<<<<<<<<<<<<<<<<<<<<<< off
+    app.canvas.style.background = 'transparent'; 
     app.canvas.style.position = 'relative';
     app.canvas.style.zIndex = '1';
 
