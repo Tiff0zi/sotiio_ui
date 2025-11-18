@@ -13,7 +13,7 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
     }
 
-    #palette-panel {
+     #palette-panel {
       position: fixed;
       top: 20px;
       right: 20px;
@@ -215,7 +215,7 @@
       <!-- 4 (→) -->
       <div class="palette-sector" data-sector="3">
         <input class="palette-color" type="color" data-sector="3" title="L2-3 →" />
-     div>
+      </div>
 
       <!-- 7 (↙) -->
       <div class="palette-sector" data-sector="5">
@@ -259,18 +259,13 @@
     await app.init({
       width: initW,
       height: initH,
+      background: '#1e1e1e',
       antialias: true,
       resolution: DPR,       // ✱ HQ: повышаем плотность пикселей
-      autoDensity: true,     // ✱ HQ: canvas подстраивается под resolution
-      backgroundAlpha: 0
+      autoDensity: true      // ✱ HQ: canvas подстраивается под resolution
       // sampleCount: 4      // если твоя сборка Pixi v8 поддерживает MSAA
     });
     document.body.appendChild(app.canvas);
-
-    // Canvas выше фона, но сам прозрачный
-    app.canvas.style.position = 'relative';
-    app.canvas.style.zIndex = '1';
-    app.canvas.style.background = 'transparent';
 
     // ✱ HQ: чуть сглаживаем позиционирование
     if (app.renderer) {
@@ -291,8 +286,6 @@
       container.y = h / 2;
 
       console.log('Pixi: resizeApp ->', w, 'x', h);
-
-      updateGlowCenter();
     }
 
     window.addEventListener('resize', resizeApp);
@@ -330,8 +323,6 @@
       container.x += deltaX;
       container.y += deltaY;
       lastMousePosition = newMousePosition;
-
-      updateGlowCenter();
     });
 
     app.canvas.addEventListener('wheel', (event) => {
@@ -351,8 +342,6 @@
         container.scale.set(scale);
         container.x = mouseX - worldPos.x * scale;
         container.y = mouseY - worldPos.y * scale;
-
-        updateGlowCenter();
       }
     }, { passive: false });
 
@@ -381,11 +370,6 @@
     const HEXES = [];
     let selectedHex = null;
     let centerHex = null;
-
-    // ── функция-заглушка: свечение теперь в index, тут ничего не делаем ──
-    function updateGlowCenter() {
-      // no-op
-    }
 
     const clearMap = () => {
       container.removeChildren();
@@ -609,7 +593,7 @@
       const text = new PIXI.Text({
         text: wrapped,
         style: {
-          fill: #1e1e1e,
+          fill: 0xffffff,
           fontSize: 12,
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           fontWeight: '500',
@@ -763,8 +747,6 @@
       });
 
       console.log('Pixi карта отрисована, всего сот:', HEXES.length);
-
-      updateGlowCenter();
     }
 
     function drawMap(raw) {
