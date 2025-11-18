@@ -38,6 +38,63 @@
         line-height: 1.1;
     }
 
+    .mode-switch {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: -20px;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #3F3F3F;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #FF6A3C;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+
+    .mode-label {
+        font-size: 18px;
+        color: #F5F5F5;
+    }
+
     .giant-input {
         width: 50vw;
         max-width: 900px;
@@ -170,6 +227,9 @@
             font-size: 16px;
             padding: 8px 10px;
         }
+        .mode-label {
+            font-size: 16px;
+        }
     }
 </style>
 </head>
@@ -195,6 +255,14 @@
 
 <div class="container">
     <h1>Выбери вселенную<br>для исследования</h1>
+
+    <div class="mode-switch">
+        <label class="switch">
+            <input type="checkbox" id="modeCheckbox">
+            <span class="slider"></span>
+        </label>
+        <span class="mode-label" id="modeLabel">Введите название</span>
+    </div>
 
     <input id="subject" class="giant-input"
            placeholder="Например: Halo, Marvel, Dune, Cyberpunk..." />
@@ -225,10 +293,13 @@
     const loadingDetails = document.getElementById("loadingDetails");
     const progressFill   = document.getElementById("progressFill");
     const timerEl        = document.getElementById("timer");
+    const modeCheckbox   = document.getElementById("modeCheckbox");
+    const modeLabel      = document.getElementById("modeLabel");
 
     let currentMapId = null;
     let startTime    = null;
     let timerInterval = null;
+    let isIdMode = false;
 
     function say(msg, color) {
         statusEl.textContent = msg || "";
@@ -280,6 +351,120 @@
         });
     }
 
+    function updateMode() {
+        isIdMode = modeCheckbox.checked;
+        if (isIdMode) {
+            subjectInput.placeholder = "Введите id карты";
+            modeLabel.textContent = "Введите id";
+        } else {
+            subjectInput.placeholder = "Например: Halo, Marvel, Dune, Cyberpunk...";
+            modeLabel.textContent = "Введите название";
+        }
+    }
+
+    function pollForMaps() {
+        const pollInterval = 15000;
+
+        const pollJsMind = () => {
+            fetch("https://n8n.sotiio.com/webhook/get_jsmind", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ map_id: currentMapId })
+            })
+            .then(safeParseTextResponse)
+            .then(data => {
+                const secondsPassed = Math.floor((new Date() - startTime) / 1000);
+
+                if (data && data.status === "pending") {
+                    loadingDetails.textContent =
+                        `Прошло ${secondsPassed} сек. — карта (jsMind) ещё не готова, проверяем снова через 15 секунд...`;
+                    setTimeout(pollJsMind, pollInterval);
+                    return;
+                }
+
+                stopOverlay();
+
+                const nodeTree = Array.isArray(data) ? data[0] : data;
+
+                if (nodeTree && nodeTree.format === "node_tree" && nodeTree.data) {
+                    // Добавляем map_id в payload для jsMind
+                    const enhancedPayload = {
+                        ...nodeTree,
+                        map_id: currentMapId
+                    };
+
+                    if (window.parent && window.parent !== window) {
+                        const send = () => {
+                            window.parent.postMessage(
+                              { type: "map:jsmind", payload: enhancedPayload },
+                              "*"
+                            );
+                        };
+
+                        if (window.parent.UI && typeof window.parent.UI.closeUserStory === "function") {
+                            window.parent.UI.closeUserStory();
+                            setTimeout(send, 400);
+                        } else {
+                            send();
+                        }
+                    }
+                    submitBtn.disabled = false;
+                } else {
+                    console.warn("Неожиданная структура ответа (jsMind):", data);
+                    say("Карта jsMind не была создана. Неожиданный формат ответа.", "crimson");
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                stopOverlay();
+                say("Ошибка при получении jsMind карты: " + err.message, "crimson");
+                submitBtn.disabled = false;
+            });
+        };
+
+        const pollPixi = () => {
+            fetch("https://n8n.sotiio.com/webhook/get_pixi", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+              },
+              body: JSON.stringify({ map_id: currentMapId })
+            })
+            .then(safeParseTextResponse)
+            .then(data => {
+              if (data && data.status === "pending") {
+                setTimeout(pollPixi, pollInterval);
+                return;
+              }
+          
+              const pixiMap = Array.isArray(data) ? data[0] : data;
+          
+              // Добавляем map_id в payload для Pixi
+              const enhancedPayload = {
+                  ...pixiMap,
+                  map_id: currentMapId
+              };
+
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage(
+                  { type: "map:pixi", payload: enhancedPayload },
+                  "*"
+                );
+              }
+            })
+            .catch(err => {
+              console.warn("Ошибка при получении Pixi карты:", err);
+            });
+          };
+
+        pollJsMind();
+        pollPixi();
+    }
+
     function sendUserStory() {
         const subject = subjectInput.value.trim();
         const lang    = langSelect.value || "en";
@@ -289,142 +474,56 @@
             return;
         }
 
-        currentMapId = mapIdFromNow();
         say("");
         submitBtn.disabled = true;
         startOverlay();
 
-        const payload = {
-            source: "sotiio_web_survey",
-            map_id: currentMapId,
-            user_story: {
-                "I_as...": "Explorer",
-                "Want_to_discover_a_universe...": subject,
-                "So_that...": ["Исследовать вселенную в общем виде"],
-                timestamp: new Date().toISOString()
-            },
-            language_reply: lang
-        };
+        if (isIdMode) {
+            // Режим ID: используем введенный ID и сразу запускаем опрос карт
+            currentMapId = subject;
+            loadingDetails.textContent = "Загружаем существующую карту...";
+            pollForMaps();
+        } else {
+            // Обычный режим: создаем новую карту
+            currentMapId = mapIdFromNow();
 
-        fetch("https://n8n.sotiio.com/webhook/us", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
-        })
-        .then(() => {
-            loadingDetails.textContent = "Запрос на создание карты отправлен...";
-        })
-        .catch(err => {
-            console.warn("Ошибка при отправке:", err);
-        })
-        .finally(() => {
-            const pollInterval = 15000;
-            const initialDelay = 120000;
+            const payload = {
+                source: "sotiio_web_survey",
+                map_id: currentMapId,
+                user_story: {
+                    "I_as...": "Explorer",
+                    "Want_to_discover_a_universe...": subject,
+                    "So_that...": ["Исследовать вселенную в общем виде"],
+                    timestamp: new Date().toISOString()
+                },
+                language_reply: lang
+            };
 
-            setTimeout(() => {
-                loadingDetails.textContent = "Проверяем статус карты...";
+            fetch("https://n8n.sotiio.com/webhook/us", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                loadingDetails.textContent = "Запрос на создание карты отправлен...";
+            })
+            .catch(err => {
+                console.warn("Ошибка при отправке:", err);
+            })
+            .finally(() => {
+                const initialDelay = 120000;
 
-                const pollJsMind = () => {
-                    fetch("https://n8n.sotiio.com/webhook/get_jsmind", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                        body: JSON.stringify({ map_id: currentMapId })
-                    })
-                    .then(safeParseTextResponse)
-                    .then(data => {
-                        const secondsPassed = Math.floor((new Date() - startTime) / 1000);
-
-                        if (data && data.status === "pending") {
-                            loadingDetails.textContent =
-                                `Прошло ${secondsPassed} сек. — карта (jsMind) ещё не готова, проверяем снова через 15 секунд...`;
-                            setTimeout(pollJsMind, pollInterval);
-                            return;
-                        }
-
-                        stopOverlay();
-
-                        const nodeTree = Array.isArray(data) ? data[0] : data;
-
-                        if (nodeTree && nodeTree.format === "node_tree" && nodeTree.data) {
-                            // Добавляем map_id в payload для jsMind
-                            const enhancedPayload = {
-                                ...nodeTree,
-                                map_id: currentMapId
-                            };
-
-                            if (window.parent && window.parent !== window) {
-                                const send = () => {
-                                    window.parent.postMessage(
-                                      { type: "map:jsmind", payload: enhancedPayload },
-                                      "*"
-                                    );
-                                };
-
-                                if (window.parent.UI && typeof window.parent.UI.closeUserStory === "function") {
-                                    window.parent.UI.closeUserStory();
-                                    setTimeout(send, 400);
-                                } else {
-                                    send();
-                                }
-                            }
-                            submitBtn.disabled = false;
-                        } else {
-                            console.warn("Неожиданная структура ответа (jsMind):", data);
-                            say("Карта jsMind не была создана. Неожиданный формат ответа.", "crimson");
-                            submitBtn.disabled = false;
-                        }
-                    })
-                    .catch(err => {
-                        stopOverlay();
-                        say("Ошибка при получении jsMind карты: " + err.message, "crimson");
-                        submitBtn.disabled = false;
-                    });
-                };
-
-                const pollPixi = () => {
-                    fetch("https://n8n.sotiio.com/webhook/get_pixi", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                      },
-                      body: JSON.stringify({ map_id: currentMapId })
-                    })
-                    .then(safeParseTextResponse)
-                    .then(data => {
-                      if (data && data.status === "pending") {
-                        setTimeout(pollPixi, pollInterval);
-                        return;
-                      }
-                  
-                      const pixiMap = Array.isArray(data) ? data[0] : data;
-                  
-                      // Добавляем map_id в payload для Pixi
-                      const enhancedPayload = {
-                          ...pixiMap,
-                          map_id: currentMapId
-                      };
-
-                      if (window.parent && window.parent !== window) {
-                        window.parent.postMessage(
-                          { type: "map:pixi", payload: enhancedPayload },
-                          "*"
-                        );
-                      }
-                    })
-                    .catch(err => {
-                      console.warn("Ошибка при получении Pixi карты:", err);
-                    });
-                  };
-
-                pollJsMind();
-                pollPixi();
-            }, initialDelay);
-        });
+                setTimeout(() => {
+                    loadingDetails.textContent = "Проверяем статус карты...";
+                    pollForMaps();
+                }, initialDelay);
+            });
+        }
     }
+
+    // Инициализация
+    modeCheckbox.addEventListener("change", updateMode);
+    updateMode(); // Установить начальное состояние
 
     submitBtn.addEventListener("click", sendUserStory);
     subjectInput.addEventListener("keydown", e => {
