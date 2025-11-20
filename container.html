@@ -354,8 +354,7 @@
                       const name = getAttributeName(attributes, attributeId, type);
                       const priority = getAttributePriority(attributes, attributeId, type);
 
-                      if (priority === 0) return; // ← ИСКЛЮЧАЕМ МЕТА ГДЕ ПРИОРИТЕТ = 0
-                      
+                      if (!name || priority === 0) return; // ← ИСКЛЮЧАЕМ МЕТА ГДЕ ПРИОРИТЕТ = 0
                       if (name) {
                         wikiItems.push({
                           name,
