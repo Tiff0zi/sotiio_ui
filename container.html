@@ -1,4 +1,3 @@
-<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
@@ -213,9 +212,9 @@
       background: #666;
     }
 
-    /* ───────────── ДОП. СТИЛИ ДЛЯ WIKI / AI / ЗАМЕТОК ───────────── */
+    /* ───────────── ДОП. СТИЛИ ДЛЯ WIKI / AI / NOTES ───────────── */
 
-    /* Шапка wiki-блока с кнопкой */
+    /* Шапка wiki-блока с кнопками */
     .wiki-item .wiki-header {
       display: flex;
       justify-content: space-between;
@@ -224,24 +223,52 @@
       margin-bottom: 8px;
     }
 
-    /* Кнопка ИИ-описания (AT08) */
+    /* Маленькие кнопки в шапке (Edit / Save / AI / Notes Save) */
+    .wiki-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .wiki-edit-btn,
+    .wiki-save-btn,
+    .wiki-notes-save-btn,
     .wiki-ai-btn {
-      border: none;
       border-radius: 4px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 500;
+      padding: 2px 6px;
+      font-size: 11px;
       cursor: pointer;
-      background: #ff622b;
-      color: #fff;
-      transition: background 0.15s ease, opacity 0.15s ease;
-      white-space: nowrap;
+      font-weight: 500;
+      background: transparent;
+      border: 1px solid #555;
+      color: #ccc;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
     }
 
-    .wiki-ai-btn:hover:not(:disabled) {
-      background: #ff7b4b;
+    .wiki-edit-btn:hover {
+      background: #444;
     }
 
+    .wiki-save-btn,
+    .wiki-notes-save-btn,
+    .wiki-ai-btn {
+      border-color: #ff622b;
+      color: #ff622b;
+    }
+
+    .wiki-save-btn:hover,
+    .wiki-notes-save-btn:hover {
+      background: #ff622b22;
+    }
+
+    .wiki-ai-btn:hover {
+      background: #ff7b4b33;
+    }
+
+    .wiki-edit-btn:disabled,
+    .wiki-save-btn:disabled,
+    .wiki-notes-save-btn:disabled,
     .wiki-ai-btn:disabled {
       opacity: 0.6;
       cursor: default;
@@ -251,6 +278,34 @@
       font-size: 14px;
       color: #e0e0e0;
       line-height: 1.5;
+    }
+
+    /* Просмотр/редактирование обычных мета-данных */
+    .wiki-view {
+      margin-top: 6px;
+    }
+
+    .wiki-edit {
+      margin-top: 6px;
+    }
+
+    .wiki-edit-textarea {
+      width: 100%;
+      min-height: 60px;
+      resize: vertical;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #2d2d2d;
+      color: #e0e0e0;
+      font-size: 13px;
+      padding: 6px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .wiki-edit-textarea:focus {
+      outline: none;
+      border-color: #ff622b;
     }
 
     /* Мини-редактор заметок (AT15) */
@@ -271,6 +326,29 @@
     .wiki-notes-textarea:focus {
       outline: none;
       border-color: #ff622b;
+    }
+
+    /* Markdown-панели */
+    .wiki-notes-toolbar,
+    .wiki-edit-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .wiki-md-btn {
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid #555;
+      background: #3a3a3a;
+      color: #ddd;
+    }
+
+    .wiki-md-btn:hover {
+      background: #4a4a4a;
     }
 
     /* Базовые стили отрендеренного markdown */
@@ -304,14 +382,19 @@
     </div>
   </aside>
 
-  <!-- ВНЕШНИЙ МОДУЛЬ ДЛЯ РАБОТЫ С MARKDOWN -->
-  <script src="md2html.js"></script>
+  <!-- МОДУЛИ КОНТЕЙНЕРА -->
+  <script src="container/md2html.js"></script>
+  <script src="container/markdown_tools.js"></script>
+  <script src="container/meta_update.js"></script>
+  <script src="container/wiki_template.js"></script>
 
   <script>
   (function(){
     let currentMapId = null;
     let currentNodeId = null;
     let currentLabel = null;
+    // Текущие meta-данные узла, которые можно обновлять и отправлять в n8n
+    let currentMeta = null;
 
     /* ──────────────── ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ──────────────── */
     document.querySelectorAll('.dw-tab').forEach(t=>{
@@ -406,7 +489,43 @@
       return attribute ? attribute.priority : 999;
     }
 
-    /* ──────────────── ДЕЙСТВИЯ ВНУТРИ WIKI (AI + NOTES) ──────────────── */
+    /* ──────────────── СОХРАНЕНИЕ META (ВСЕ ТИПЫ) ──────────────── */
+
+    function saveMetaValue(metaType, attributeId, newValue, button) {
+      if (!currentMeta || !currentMapId) {
+        console.error('Нет currentMeta или currentMapId для сохранения');
+        return Promise.resolve();
+      }
+      if (!window.MetaUpdate) {
+        console.error('MetaUpdate модуль не найден');
+        return Promise.resolve();
+      }
+
+      let originalText = '';
+      if (button) {
+        button.disabled = true;
+        originalText = button.textContent;
+        button.textContent = 'Сохранение...';
+      }
+
+      // Обновляем локальный объект meta
+      window.MetaUpdate.updateValue(currentMeta, metaType, attributeId, newValue);
+
+      // Шлём апдейт в n8n
+      return window.MetaUpdate.push(currentMapId, currentMeta)
+        .catch(err => {
+          console.error('Ошибка сохранения meta-данных:', err);
+          alert('Ошибка сохранения meta-данных: ' + (err.message || String(err)));
+        })
+        .finally(() => {
+          if (button) {
+            button.disabled = false;
+            button.textContent = originalText || 'Save';
+          }
+        });
+    }
+
+    /* ──────────────── ДЕЙСТВИЯ ВНУТРИ WIKI (AI / NOTES / EDIT) ──────────────── */
 
     function setupWikiActions() {
       // --- AI-описание (AT08) ---
@@ -434,7 +553,6 @@
               .then(resp => resp.text())
               .then(text => {
                 let md = text;
-                // На случай ответа вида { "markdown": "..." }
                 try {
                   const parsed = JSON.parse(text);
                   if (parsed && parsed.markdown) md = parsed.markdown;
@@ -457,21 +575,83 @@
         }
       }
 
-      // --- Мини-редактор заметок (AT15) ---
-      const notes = document.querySelector('.wiki-notes-textarea');
-      if (notes && currentMapId && currentNodeId && window.localStorage) {
-        const key = `sotiio_notes_${currentMapId}_${currentNodeId}`;
-        const saved = localStorage.getItem(key);
-        if (saved && !notes.value) {
-          notes.value = saved;
+      // --- Notes (AT15) + markdown-панель + Save в Meta ---
+      const notesBox = document.querySelector('.wiki-item.wiki-notes');
+      if (notesBox) {
+        const notesTextarea = notesBox.querySelector('.wiki-notes-textarea');
+        const notesSaveBtn = notesBox.querySelector('.wiki-notes-save-btn');
+        const metaType = notesBox.getAttribute('data-type');      // "text"
+        const attrId = notesBox.getAttribute('data-attr-id');     // "AT15"
+
+        // Локальное хранение заметок (как кэш) в localStorage
+        if (notesTextarea && currentMapId && currentNodeId && window.localStorage) {
+          const key = `sotiio_notes_${currentMapId}_${currentNodeId}`;
+          const saved = localStorage.getItem(key);
+          if (saved && !notesTextarea.value) {
+            notesTextarea.value = saved;
+          }
+          notesTextarea.addEventListener('input', () => {
+            localStorage.setItem(key, notesTextarea.value);
+          });
         }
-        notes.addEventListener('input', () => {
-          localStorage.setItem(key, notes.value);
-        });
+
+        if (notesTextarea && notesSaveBtn && metaType && attrId) {
+          notesSaveBtn.addEventListener('click', () => {
+            const val = notesTextarea.value || '';
+            saveMetaValue(metaType, attrId, val, notesSaveBtn);
+          });
+        }
       }
+
+      // --- Edit / Save для обычных meta-данных (кроме AT08) ---
+      const defaultItems = document.querySelectorAll('.wiki-item[data-kind="default"]');
+      defaultItems.forEach(box => {
+        const metaType = box.getAttribute('data-type');      // text/number/select/boolean/data
+        const attrId = box.getAttribute('data-attr-id');
+        const editBtn = box.querySelector('.wiki-edit-btn');
+        const saveBtn = box.querySelector('.wiki-save-btn');
+        const viewDiv = box.querySelector('.wiki-view');
+        const valueDiv = box.querySelector('.wiki-value');
+        const editBlock = box.querySelector('.wiki-edit');
+        const editTextarea = box.querySelector('.wiki-edit-textarea');
+
+        if (!metaType || !attrId || !editBtn || !saveBtn || !viewDiv || !valueDiv || !editBlock || !editTextarea) {
+          return;
+        }
+
+        editBtn.addEventListener('click', () => {
+          editTextarea.value = valueDiv.textContent || '';
+          viewDiv.style.display = 'none';
+          editBlock.style.display = 'block';
+          editTextarea.focus();
+        });
+
+        saveBtn.addEventListener('click', () => {
+          const newVal = editTextarea.value || '';
+          saveMetaValue(metaType, attrId, newVal, saveBtn).then(() => {
+            valueDiv.textContent = newVal;
+            viewDiv.style.display = 'block';
+            editBlock.style.display = 'none';
+          });
+        });
+      });
+
+      // --- Markdown-кнопки (B / H1 / H2 / List) для всех textarea ---
+      const mdButtons = document.querySelectorAll('.wiki-md-btn');
+      mdButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!window.MarkdownTools || typeof window.MarkdownTools.applyMarkdown !== 'function') return;
+          const action = btn.getAttribute('data-md-action');
+          const container = btn.closest('.wiki-item');
+          if (!container) return;
+          const textarea = container.querySelector('textarea');
+          if (!textarea || !action) return;
+          window.MarkdownTools.applyMarkdown(textarea, action);
+        });
+      });
     }
 
-        /* ──────────────── РЕНДЕРИНГ WIKI ──────────────── */
+    /* ──────────────── РЕНДЕРИНГ WIKI ──────────────── */
 
     function renderWiki(nodeLike) {
       const box = document.getElementById('tab-wiki');
@@ -481,12 +661,11 @@
         fetchMetaData(currentMapId, currentNodeId)
           .then(metaData => {
             if (metaData && metaData.meta && metaData.attributes) {
-              const meta = metaData.meta || {};
+              currentMeta = metaData.meta || {};
+              const meta = currentMeta;
               const attributes = metaData.attributes;
               
-              // Обычные атрибуты
-              let wikiItems = [];
-              // Особые атрибуты
+              let wikiItems = [];   // обычные атрибуты
               let aiWikiItem = null;   // AT08
               let notesItem = null;    // AT15
               
@@ -513,13 +692,25 @@
                     // Особые текстовые поля
                     if (type === 'text') {
                       if (attributeId === 'AT08') {
-                        // AI-описание
-                        aiWikiItem = { kind: 'ai', name, value: rawValue, priority };
+                        aiWikiItem = {
+                          kind: 'ai',
+                          metaType: type,
+                          attributeId,
+                          name,
+                          value: rawValue,
+                          priority
+                        };
                         return;
                       }
                       if (attributeId === 'AT15') {
-                        // Заметки пользователя
-                        notesItem = { kind: 'notes', name, value: rawValue, priority };
+                        notesItem = {
+                          kind: 'notes',
+                          metaType: type,
+                          attributeId,
+                          name,
+                          value: rawValue,
+                          priority
+                        };
                         return;
                       }
                     }
@@ -529,6 +720,8 @@
 
                     wikiItems.push({
                       kind: 'default',
+                      metaType: type,
+                      attributeId,
                       name,
                       value: rawValue,
                       priority
@@ -539,77 +732,49 @@
               
               // Собираем единый список для сортировки по priority
               const displayItems = [];
-
               if (aiWikiItem)   displayItems.push(aiWikiItem);
               if (notesItem)    displayItems.push(notesItem);
               displayItems.push(...wikiItems);
 
-              // Сортировка по приоритету (меньше — выше)
               displayItems.sort((a, b) => a.priority - b.priority);
 
               if (displayItems.length) {
                 let html = '';
-
-                displayItems.forEach(item => {
-                  if (item.kind === 'ai') {
-                    // --- Блок AI-описания (AT08) ---
-                    html += `
-                      <div class="wiki-item wiki-ai">
-                        <div class="wiki-header">
-                          <h3>${escapeHtml(item.name)}</h3>
-                          <button type="button" class="wiki-ai-btn">Получить описание</button>
-                        </div>
-                        <div class="wiki-ai-content">
-                          ${
-                            item.value
-                              ? (window.md2html && typeof window.md2html.renderMarkdown === 'function'
-                                  ? window.md2html.renderMarkdown(item.value)
-                                  : escapeHtml(item.value))
-                              : '<div class="empty">Нажмите «Получить описание», чтобы сгенерировать текст.</div>'
-                          }
-                        </div>
-                      </div>
-                    `;
-                  } else if (item.kind === 'notes') {
-                    // --- Блок заметок пользователя (AT15) ---
-                    html += `
-                      <div class="wiki-item wiki-notes">
-                        <h3>${escapeHtml(item.name)}</h3>
-                        <textarea class="wiki-notes-textarea" rows="4" placeholder="Добавьте заметки...">${escapeHtml(item.value)}</textarea>
-                      </div>
-                    `;
-                  } else {
-                    // --- Обычные wiki-атрибуты ---
+                if (window.WikiTemplate && typeof window.WikiTemplate.renderItems === 'function') {
+                  html = window.WikiTemplate.renderItems(displayItems);
+                } else {
+                  // fallback, если модуль не подгрузился
+                  displayItems.forEach(item => {
                     html += `
                       <div class="wiki-item">
                         <h3>${escapeHtml(item.name)}</h3>
                         <div>${escapeHtml(String(item.value))}</div>
                       </div>
                     `;
-                  }
-                });
-
+                  });
+                }
                 box.innerHTML = html;
-                // после вставки HTML навешиваем обработчики
                 setupWikiActions();
               } else {
                 box.innerHTML = '<div class="empty">Для этого узла нет wiki-информации.</div>';
               }
             } else {
+              currentMeta = null;
               box.innerHTML = '<div class="empty">Для этого узла нет wiki-информации.</div>';
             }
           })
           .catch(error => {
+            currentMeta = null;
             console.error('Ошибка загрузки wiki-данных:', error);
             box.innerHTML = `<div class="error">Ошибка загрузки wiki-данных: ${error.message}</div>`;
           });
       } else {
+        currentMeta = null;
         box.innerHTML = '<div class="empty">Для загрузки wiki-данных требуется map_id и node_id</div>';
       }
     }
 
-
-    /* ──────────────── РЕНДЕРИНГ RAW DATA (БЕЗ ИЗМЕНЕНИЙ) ──────────────── */
+    /* ──────────────── РЕНДЕРИНГ RAW DATA (КАК БЫЛО) ──────────────── */
 
     function renderRaw(nodeLike) {
       const box = document.getElementById('tab-raw');
@@ -703,11 +868,13 @@
       currentMapId = nodeLike.map_id || null;
       currentNodeId = nodeLike.node_id || null;
       currentLabel = nodeLike.label || null;
+      currentMeta = null;
 
       renderWiki(nodeLike);
       renderRaw(nodeLike);
     }
 
+    // Связь с index.html
     window.addEventListener('message', (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'container:set') {
@@ -715,6 +882,7 @@
       }
     });
 
+    // Ручной API
     window.ContainerAPI = { setData };
   })();
   </script>
