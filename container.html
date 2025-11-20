@@ -813,20 +813,21 @@
 
     /* ──────────────── РЕНДЕРИНГ RAW DATA (КАК БЫЛО) ──────────────── */
 
+    
     function renderRaw(nodeLike) {
       const box = document.getElementById('tab-raw');
       showLoading('tab-raw', 'Загрузка данных...');
 
       const dSource = nodeLike || currentNodeData || {};
       const d = dSource?.data?.data || dSource?.data || dSource || {};
-      
+
       const rows = [
         ['Map ID', currentMapId || '—'],
         ['Node ID', currentNodeId || '—'],
         ['Название', currentLabel || '—'],
         ['Уровень', d.level || (d.node_id && d.node_id.startsWith('L1') ? 'Корневой' : 'Дочерний') || '—'],
       ];
-      
+
       let baseHtml = `
         <div class="meta-section">
           <h3>Основная информация</h3>
@@ -889,23 +890,18 @@
       `;
 
       box.innerHTML = fullHtml;
-   })
-          .catch(error => {
-            console.error('Ошибка загрузки meta-данных:', error);
-            box.innerHTML = baseHtml + `<div class="error">Ошибка загрузки meta-данных: ${error.message}</div>`;
-          });
-      } else {
-        box.innerHTML = baseHtml + `<div class="empty">Для загрузки дополнительных данных требуется map_id и node_id</div>`;
-      }
     }
 
-    /* ──────────────── ПУБЛИЧНЫЙ API ДЛЯ INDEX.HTML ──────────────── */
+/* ──────────────── ПУБЛИЧНЫЙ API ДЛЯ INDEX.HTML ──────────────── */
 
     function setData(nodeLike) {
       currentMapId = nodeLike.map_id || null;
       currentNodeId = nodeLike.node_id || null;
       currentLabel = nodeLike.label || null;
+
       currentMeta = null;
+      currentAttributes = null;
+      currentNodeData = null;
 
       renderWiki(nodeLike);
       renderRaw(nodeLike);
