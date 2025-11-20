@@ -557,7 +557,8 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 map_id: currentMapId,
-                node_id: currentNodeId
+                node_id: currentNodeId,
+                label: currentLabel
               })
             })
               .then(resp => resp.text())
