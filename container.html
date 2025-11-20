@@ -397,6 +397,9 @@
     let currentLabel = null;
     // Текущие meta-данные узла, которые можно обновлять и отправлять в n8n
     let currentMeta = null;
+    let currentAttributes = null;
+    let currentNodeData = null;
+
 
     /* ──────────────── ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ──────────────── */
     document.querySelectorAll('.dw-tab').forEach(t=>{
@@ -515,6 +518,10 @@
 
       // Шлём апдейт в n8n
       return window.MetaUpdate.push(currentMapId, currentMeta)
+        .then(() => {
+          // после успешного сохранения перерисуем Raw Data с актуальным currentMeta
+          renderRaw(currentNodeData);
+        })
         .catch(err => {
           console.error('Ошибка сохранения meta-данных:', err);
           alert('Ошибка сохранения meta-данных: ' + (err.message || String(err)));
@@ -525,6 +532,7 @@
             button.textContent = originalText || 'Save';
           }
         });
+
     }
 
     /* ──────────────── ДЕЙСТВИЯ ВНУТРИ WIKI (AI / NOTES / EDIT) ──────────────── */
@@ -611,21 +619,41 @@
         const metaType = box.getAttribute('data-type');      // text/number/select/boolean/data
         const attrId = box.getAttribute('data-attr-id');
         const editBtn = box.querySelector('.wiki-edit-btn');
+        const cancelBtn = box.querySelector('.wiki-cancel-btn');
         const saveBtn = box.querySelector('.wiki-save-btn');
         const viewDiv = box.querySelector('.wiki-view');
         const valueDiv = box.querySelector('.wiki-value');
         const editBlock = box.querySelector('.wiki-edit');
         const editTextarea = box.querySelector('.wiki-edit-textarea');
 
-        if (!metaType || !attrId || !editBtn || !saveBtn || !viewDiv || !valueDiv || !editBlock || !editTextarea) {
+        if (!metaType || !attrId || !editBtn || !saveBtn || !cancelBtn ||
+            !viewDiv || !valueDiv || !editBlock || !editTextarea) {
           return;
         }
+
+        // Режим просмотра по умолчанию
+        viewDiv.style.display = 'block';
+        editBlock.style.display = 'none';
+        editBtn.style.display = '';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
 
         editBtn.addEventListener('click', () => {
           editTextarea.value = valueDiv.textContent || '';
           viewDiv.style.display = 'none';
           editBlock.style.display = 'block';
+          editBtn.style.display = 'none';
+          saveBtn.style.display = '';
+          cancelBtn.style.display = '';
           editTextarea.focus();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+          editBlock.style.display = 'none';
+          viewDiv.style.display = 'block';
+          editBtn.style.display = '';
+          saveBtn.style.display = 'none';
+          cancelBtn.style.display = 'none';
         });
 
         saveBtn.addEventListener('click', () => {
@@ -634,9 +662,13 @@
             valueDiv.textContent = newVal;
             viewDiv.style.display = 'block';
             editBlock.style.display = 'none';
+            editBtn.style.display = '';
+            saveBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
           });
         });
       });
+
 
       // --- Markdown-кнопки (B / H1 / H2 / List) для всех textarea ---
       const mdButtons = document.querySelectorAll('.wiki-md-btn');
@@ -664,8 +696,11 @@
           .then(metaData => {
             if (metaData && metaData.meta && metaData.attributes) {
               currentMeta = metaData.meta || {};
+              currentAttributes = metaData.attributes || null;
+              currentNodeData = nodeLike || null;
+
               const meta = currentMeta;
-              const attributes = metaData.attributes;
+              const attributes = currentAttributes;
               
               let wikiItems = [];   // обычные атрибуты
               let aiWikiItem = null;   // AT08
@@ -782,7 +817,8 @@
       const box = document.getElementById('tab-raw');
       showLoading('tab-raw', 'Загрузка данных...');
 
-      const d = nodeLike?.data?.data || nodeLike?.data || nodeLike || {};
+      const dSource = nodeLike || currentNodeData || {};
+      const d = dSource?.data?.data || dSource?.data || dSource || {};
       
       const rows = [
         ['Map ID', currentMapId || '—'],
@@ -802,59 +838,58 @@
         </div>
       `;
 
-      box.innerHTML = baseHtml;
+      let fullHtml = baseHtml;
 
-      if (currentMapId && currentNodeId) {
-        fetchMetaData(currentMapId, currentNodeId)
-          .then(metaData => {
-            let fullHtml = baseHtml;
-            
-            if (metaData) {
-              if (metaData.meta) {
-                fullHtml += `
-                  <div class="meta-section">
-                    <h3>Meta Data</h3>
-                    <pre>${escapeHtml(JSON.stringify(metaData.meta, null, 2))}</pre>
-                  </div>
-                `;
-              }
-              
-              if (metaData.attributes) {
-                fullHtml += `
-                  <div class="meta-section">
-                    <h3>Global Attributes</h3>
-                    <pre>${escapeHtml(JSON.stringify(metaData.attributes, null, 2))}</pre>
-                  </div>
-                `;
-              }
-            } else {
-              fullHtml += `<div class="empty">Дополнительные meta-данные отсутствуют</div>`;
-            }
-            
-            const fullData = {
-              map_id: currentMapId,
-              node_id: currentNodeId,
-              label: currentLabel,
-              ...nodeLike,
-              meta: metaData
-            };
-            
-            let fullText = '';
-            try {
-              fullText = JSON.stringify(fullData, null, 2);
-            } catch(e) {
-              fullText = String(fullData);
-            }
-            
-            fullHtml += `
-              <div class="meta-section">
-                <h3>Raw Data</h3>
-                <pre>${escapeHtml(fullText)}</pre>
-              </div>
-            `;
-            
-            box.innerHTML = fullHtml;
-          })
+      // Используем текущие meta/attributes, если они есть
+      if (currentMeta) {
+        fullHtml += `
+          <div class="meta-section">
+            <h3>Meta Data</h3>
+            <pre>${escapeHtml(JSON.stringify(currentMeta, null, 2))}</pre>
+          </div>
+        `;
+      } else {
+        fullHtml += `<div class="empty">Meta Data отсутствует</div>`;
+      }
+
+      if (currentAttributes) {
+        fullHtml += `
+          <div class="meta-section">
+            <h3>Global Attributes</h3>
+            <pre>${escapeHtml(JSON.stringify(currentAttributes, null, 2))}</pre>
+          </div>
+        `;
+      } else {
+        fullHtml += `<div class="empty">Global Attributes отсутствуют</div>`;
+      }
+
+      const fullData = {
+        map_id: currentMapId,
+        node_id: currentNodeId,
+        label: currentLabel,
+        ...dSource,
+        meta: {
+          meta: currentMeta,
+          attributes: currentAttributes
+        }
+      };
+
+      let fullText = '';
+      try {
+        fullText = JSON.stringify(fullData, null, 2);
+      } catch(e) {
+        fullText = String(fullData);
+      }
+
+      fullHtml += `
+        <div class="meta-section">
+          <h3>Raw Data</h3>
+          <pre>${escapeHtml(fullText)}</pre>
+        </div>
+      `;
+
+      box.innerHTML = fullHtml;
+   })
           .catch(error => {
             console.error('Ошибка загрузки meta-данных:', error);
             box.innerHTML = baseHtml + `<div class="error">Ошибка загрузки meta-данных: ${error.message}</div>`;
