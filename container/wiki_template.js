@@ -98,14 +98,14 @@
     `;
   }
 
-  function renderDefault(item) {
+    function renderDefault(item) {
     const name = escapeHtml(item.name);
     const metaType = escapeHtml(item.metaType);
     const attrId = escapeHtml(item.attributeId);
     const value = escapeHtml(String(item.value ?? ''));
 
     return `
-      <!-- Обычный meta-атрибут с Edit/Save -->
+      <!-- Обычный meta-атрибут с Edit/Save/Cancel -->
       <div class="wiki-item"
            data-kind="default"
            data-type="${metaType}"
@@ -114,7 +114,8 @@
           <h3>${name}</h3>
           <div class="wiki-actions">
             <button type="button" class="wiki-edit-btn">Edit</button>
-            <button type="button" class="wiki-save-btn">Save</button>
+            <button type="button" class="wiki-cancel-btn" style="display:none;">Cancel</button>
+            <button type="button" class="wiki-save-btn" style="display:none;">Save</button>
           </div>
         </div>
         <div class="wiki-view">
@@ -132,6 +133,7 @@
       </div>
     `;
   }
+
 
   function renderItems(items) {
     if (!Array.isArray(items) || !items.length) return '';
