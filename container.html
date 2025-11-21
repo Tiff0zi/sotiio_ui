@@ -559,7 +559,16 @@
                 map_id: currentMapId,
                 node_id: currentNodeId,
                 parent_id: currentNodeData?.parent_id || null,
-                label: currentLabel
+                label: currentLabel,
+                clue: (() => {
+                  try {
+                    const arr = currentMeta?.meta_text || [];
+                    const item = arr.find(x => x.attribute_text_id === "AT07");
+                    return item?.value || "";
+                  } catch (e) {
+                    return "";
+                  }
+                })()
               })
             })
               .then(resp => resp.text())
