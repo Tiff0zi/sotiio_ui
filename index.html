@@ -1,392 +1,228 @@
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>sotiio — index</title>
+  <title>Sotiio — where visualization becomes content</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * { box-sizing: border-box; }
-    html, body { 
-      height: 100%; 
-      margin: 0; 
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: radial-gradient(circle at top, #252938 0%, #111319 45%, #05060a 100%);
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #ffffff; /* ЦВЕТ ФОНА */
-      color: #e0e0e0;
     }
 
-    /* Глобальное свечение под картой (и вообще под всем)
-    #global-glow {
-      position: fixed;
+    .layout {
+      position: relative;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    /* Hex honeycomb background (bottom-up) */
+    .hex-bg {
+      position: absolute;
       inset: 0;
+      overflow: hidden;
       z-index: 0;
       pointer-events: none;
-      background: radial-gradient(
-        circle at center,
-        rgba(255,255,255,0.12) 0%,
-        rgba(255,255,255,0.04) 25%,
-        rgba(0,0,0,0.90) 70%,
-        rgba(0,0,0,1) 100%
-      );
-    } */
-
-    .layout { 
-      display: block;
-      height: 100vh;
-      position: relative;
-      z-index: 1; /* над свечением */
     }
 
-    /* Viewer */
-    #viewerWrap {
+    .hex-layer {
       position: absolute;
-      inset: 0;
-      background: transparent;
-      overflow: hidden;
+      width: 180%;
+      height: 80%;
+      bottom: -10%;
+      left: -40%;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.12) 1px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+      background-size: 36px 62px;
+      background-position: 0 0, 18px 31px;
+      opacity: 0.16;
+      filter: blur(0.3px);
+      mask-image: linear-gradient(to top, black 0%, transparent 80%);
     }
 
-    #jsmindFrame,
-    #pixiFrame {
+    .glow {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-
-    #viewerWrap.view-mode-jsmind #jsmindFrame { display: block; }
-    #viewerWrap.view-mode-jsmind #pixiFrame { display: none; }
-    #viewerWrap.view-mode-pixi #jsmindFrame { display: none; }
-    #viewerWrap.view-mode-pixi #pixiFrame { display: block; }
-
-    /* Topbar */
-    .topbar {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 100;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .icon-btn {
-      width: 44px;
-      height: 44px;
-      background: #34a2db;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-family: inherit;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      position: relative;
-    }
-
-    .icon-btn:hover {
-      background: #2b8dc5;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    }
-
-    .icon-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-
-    .icon-btn::after {
-      content: "Новое исследование";
-      position: absolute;
-      top: 100%;
+      bottom: 10%;
       left: 50%;
-      transform: translateX(-50%) translateY(8px);
-      background: #333;
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      white-space: nowrap;
-      opacity: 0;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(118,198,255,0.35) 0%, rgba(7,13,23,0) 60%);
+      opacity: 0.9;
       pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      z-index: 1000;
     }
 
-    .icon-btn:hover::after {
-      opacity: 1;
-      transform: translateX(-50%) translateY(4px);
+    .content {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
     }
 
-    /* Toggle jsMind / Pixi */
-    .view-toggle {
+    .logo {
+      font-size: 20px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #9ea4c7;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(40px, 6vw, 70px);
+      font-weight: 800;
+      line-height: 1.05;
+    }
+
+    .accent {
+      background: linear-gradient(120deg, #77c3ff, #ff8a7a);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      max-width: 520px;
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #c0c4de;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      padding: 18px 36px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 600;
       display: inline-flex;
       align-items: center;
-      background: rgba(0,0,0,0.4);
-      border-radius: 999px;
-      padding: 4px;
-      border: 1px solid #333;
-      margin-left: 8px;
-      gap: 4px;
+      gap: 10px;
+      background: linear-gradient(135deg, #2ea6ff, #5f8bff);
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(39,125,255,0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
     }
 
-    .view-toggle-btn {
-      border: none;
-      border-radius: 999px;
-      padding: 4px 10px;
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 40px rgba(39,125,255,0.6);
+      filter: brightness(1.05);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 6px 16px rgba(39,125,255,0.4);
+    }
+
+    .btn-primary svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #8589a3;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 12px;
-      cursor: pointer;
-      background: transparent;
-      color: #bbb;
-      font-family: inherit;
-      transition: background 0.15s ease, color 0.15s ease;
+      color: #5e6484;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .view-toggle-btn.active {
-      background: #34a2db;
-      color: #fff;
+    @media (max-width: 600px) {
+      .layout { padding: 24px 16px; }
+      .content { gap: 24px; }
+      .subtitle { font-size: 14px; }
+      .btn-primary {
+        width: 100%;
+        justify-content: center;
+      }
     }
-
-    /* Container iframe */
-    aside {
-      position: absolute;
-      top: 0;
-      right: 0;
-      height: 100%;
-      width: clamp(360px, 40vw, 880px);
-      border-left: 1px solid #333;
-      background: #2c2c2c;
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      z-index: 50;
-    }
-
-    .layout.with-container aside {
-      transform: translateX(0);
-    }
-
-    #containerFrame {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-    }
-
-    .close-container {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 101;
-      background: #333;
-      border: none;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      font-size: 18px;
-      cursor: pointer;
-      color: #888;
-      display: none;
-      transition: all 0.2s ease;
-    }
-
-    .layout.with-container .close-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .close-container:hover {
-      background: #444;
-      color: #fff;
-    }
-
-    /* Modal */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      padding: 4vh 4vw;
-    }
-
-    .modal.open {
-      display: flex;
-    }
-
-    .modal-card {
-      width: min(820px, 96vw);
-      height: min(640px, 88vh);
-      background: #2c2c2c;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      border: 1px solid #444;
-    }
-
-    #userstoryFrame {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-    }
-
-    /* Scrollbar styling */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track { background: #2c2c2c; }
-    ::-webkit-scrollbar-thumb {
-      background: #555;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover { background: #666; }
   </style>
 </head>
 <body>
-  <!-- Глобальное свечение под обоими фреймами -->
-  <div id="global-glow"></div>
+  <div class="layout">
+    <div class="hex-bg">
+      <div class="hex-layer"></div>
+      <div class="glow"></div>
+    </div>
 
-  <div class="layout" id="mainLayout">
-    <section id="viewerWrap" class="view-mode-jsmind">
-      <div class="topbar">
-        <button class="icon-btn" onclick="window.UI.openUserStory()" title="Новое исследование">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <main class="content">
+      <div class="logo">SOTIIO</div>
+      <h1>
+        Where <span class="accent">visualization</span> becomes content,<br/>
+        and content becomes <span class="accent">visualization</span>.
+      </h1>
+      <p class="subtitle">
+        Build living knowledge maps instead of static documents. Navigate complexity through hexagonal worlds of meaning.
+      </p>
+
+      <div class="cta-row">
+        <button class="btn-primary" onclick="startLogin()">
+          <!-- Telegram icon (simple) -->
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M9.8 16.8L9.6 20c.3 0 .5-.1.7-.3l1.6-1.6 3.3 2.4c.6.3 1.1.1 1.3-.6l2.4-11.4v-.1c.1-.6-.2-1-.8-.8L3.4 9.5c-.6.2-.6.6-.1.8l3.8 1.2 8.8-5.5-6.5 6.6- .1 0z"/>
           </svg>
+          Login with Telegram
         </button>
-
-        <div class="view-toggle">
-          <button class="view-toggle-btn active" data-view-mode="jsmind">jsMind</button>
-          <button class="view-toggle-btn" data-view-mode="pixi">Pixi</button>
+        <div class="hint">
+          Single sign-on via Keycloak • No passwords stored on Sotiio.
         </div>
       </div>
+    </main>
 
-      <iframe id="jsmindFrame" src="jsmind.html" title="jsMind карта"></iframe>
-      <iframe id="pixiFrame" src="pixi.html" title="Pixi карта"></iframe>
-    </section>
-
-    <aside>
-      <button class="close-container" onclick="window.UI.closeContainer()" title="Закрыть панель">×</button>
-      <iframe id="containerFrame" src="container.html" title="Детали узла"></iframe>
-    </aside>
-  </div>
-
-  <!-- userstory модалка по умолчанию открыта -->
-  <div id="modalUS" class="modal open" aria-hidden="false">
-    <div class="modal-card">
-      <iframe id="userstoryFrame" src="userstory.html" title="Форма исследования"></iframe>
+    <div class="footer">
+      Sotiio · Knowledge Maps
     </div>
   </div>
 
   <script>
-  (function(){
-    const viewerWrap   = document.getElementById('viewerWrap');
-    const modeButtons  = document.querySelectorAll('.view-toggle-btn');
-    const mainLayout   = document.getElementById('mainLayout');
-    const containerFrame = document.getElementById('containerFrame');
-    const modal        = document.getElementById('modalUS');
-    const jsmindFrame  = document.getElementById('jsmindFrame');
-    const pixiFrame    = document.getElementById('pixiFrame');
+    function startLogin() {
+      // TODO: подставь реальные параметры Keycloak
+      const keycloakAuthUrl = "https://auth.sotiio.com/realms/SOTIIO/protocol/openid-connect/auth";
 
-    let currentMode = 'jsmind';
-
-    function setMode(mode) {
-      currentMode = mode;
-      viewerWrap.classList.remove('view-mode-jsmind', 'view-mode-pixi');
-      viewerWrap.classList.add('view-mode-' + mode);
-      modeButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.viewMode === mode);
+      const params = new URLSearchParams({
+        client_id: "sotiio-web",              // ← твой client_id
+        redirect_uri: "https://app.sotiio.com", // ← куда вернуть после логина
+        response_type: "code",                // или "code" с PKCE
+        scope: "openid profile",
+        kc_idp_hint: "telegram"               // если настроен отдельный IdP для Telegram
       });
-    
-      if (mode === 'pixi' && pixiFrame && pixiFrame.contentWindow) {
-        try {
-          pixiFrame.contentWindow.postMessage({ type: 'pixi:resize' }, '*');
-        } catch (e) {
-          console.warn('index: pixi:resize postMessage failed', e);
-        }
-      }
+
+      window.location.href = keycloakAuthUrl + "?" + params.toString();
     }
-
-    modeButtons.forEach(btn => {
-      btn.addEventListener('click', () => setMode(btn.dataset.viewMode));
-    });
-
-    setMode('jsmind');
-
-    function openContainer(payload) {
-      mainLayout.classList.add('with-container');
-      try {
-        containerFrame.contentWindow.postMessage(
-          { type: 'container:set', payload },
-          '*'
-        );
-      } catch (err) {
-        console.warn('containerFrame postMessage failed', err);
-      }
-    }
-
-    function closeContainer() {
-      mainLayout.classList.remove('with-container');
-    }
-
-    function openUserStory(){
-      document.body.style.overflow = 'hidden';
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden','false');
-    }
-
-    function closeUserStory(){
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden','true');
-      document.body.style.overflow = '';
-    }
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeContainer();
-        closeUserStory();
-      }
-    });
-
-    window.addEventListener('message', (ev) => {
-      const msg = ev.data || {};
-
-      if (msg.type === 'map:jsmind') {
-        setMode('jsmind');
-        try {
-          jsmindFrame.contentWindow.postMessage(msg, '*');
-        } catch (e) {
-          console.warn('forward to jsmindFrame failed', e);
-        }
-      }
-
-      if (msg.type === 'map:pixi') {
-        try {
-          pixiFrame.contentWindow.postMessage(msg, '*');
-        } catch (e) {
-          console.warn('forward to pixiFrame failed', e);
-        }
-      }
-
-      if (msg.type === 'container:set') {
-        openContainer(msg.payload || {});
-      }
-    });
-
-    window.UI = {
-      openUserStory,
-      closeUserStory,
-      closeContainer
-    };
-  })();
   </script>
 </body>
 </html>
