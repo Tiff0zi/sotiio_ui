@@ -558,6 +558,7 @@
               body: JSON.stringify({
                 map_id: currentMapId,
                 node_id: currentNodeId,
+                parent_id: currentNodeData?.parent_id || null,
                 label: currentLabel
               })
             })
