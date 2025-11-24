@@ -47,8 +47,6 @@ https://n8n.sotiio.com/webhook/update_meta_attributes
 https://n8n.sotiio.com/webhook/getwiki
 
 7. **Авторизация через Телеграм**
-   
-https://n8n.sotiio.com/webhook/telegram_auth
 
 https://n8n.sotiio.com/webhook/telegram_auth
 
