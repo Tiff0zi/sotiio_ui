@@ -7,21 +7,23 @@
 1. https://auth.sotiio.com/
 - login: adminmaxim
 - pass: sotiio4u
+
 KeyCloak - админка авторизации, привязана к лендингу
 
 2. https://github.com/Tiff0zi/sotiio_landing
-- приглашение KapTy3R
-Лендинг. Работает через GitPages. Любой коммит - через 1-2 минуты GitPages сам обновляет
+Лендинг. Работает через GitPages. Любой коммит - через 1-2 минуты GitPages сам обновляет.
 Есть ветка MVP - если в GitPages переключиться на нее, то будет отображаться отладочный вариант отрисовки карты, который работает без лагов как целевое исполнение Pixi и JSmind
 
 3. https://github.com/Tiff0zi/sotiio_app
-- приглашение KapTy3R
 Приложение. Работает через VPS. Любой коммит - мнгновенный пуш и через 1 минуту обновление - можно проверять
 
 # Вебхуки Бэкэнда
-1. https://n8n.sotiio.com/webhook/us - основной вебхук создающий карту
+1. 
+https://n8n.sotiio.com/webhook/us - основной вебхук создающий карту
 - на вход:
     * 
 - на выход:
     * 
-- 
+2. Загрузка карты.
+https://n8n.sotiio.com/webhook/get_jsmind
+https://n8n.sotiio.com/webhook/get_pixi
